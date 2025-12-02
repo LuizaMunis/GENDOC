@@ -514,14 +514,20 @@ def preencher_linha_com_dados_sprint(row, sprint_data, tags_sprint):
             # IMPORTANTE: Obtém o texto original UMA VEZ antes do loop
             texto_original = paragraph.text
             
-            # Processa cada tag
-            for tag, campo in tags_sprint.items():
-                # Verifica se a tag está presente no texto original
-                if tag not in texto_original:
-                    # Log apenas para tags importantes que não foram encontradas
-                    if tag in ['{SPRINT_ID}', '{SPRINT_TIPO}']:
-                        print(f"[DEBUG] [WARN] Tag {tag} não encontrada na célula {cell_idx} (texto: {texto_original[:50]})")
-                    continue
+            # IMPORTANTE: Processa apenas as tags que estão PRESENTES nesta célula específica
+            # Isso evita processar tags que não pertencem a esta célula
+            tags_na_celula = []
+            for tag in tags_sprint.keys():
+                if tag in texto_original:
+                    tags_na_celula.append(tag)
+            
+            # Se não há tags nesta célula, pula para a próxima
+            if not tags_na_celula:
+                continue
+            
+            # Processa apenas as tags encontradas nesta célula
+            for tag in tags_na_celula:
+                campo = tags_sprint[tag]
                 
                 # Lógica especial para diferenciar HST original de horas sprint do usuário
                 if tag == '{SPRINT_HST}':
