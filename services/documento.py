@@ -349,7 +349,8 @@ def duplicar_linha_tabela(table, linha_template_index):
                     if run_template.font.size:
                         novo_run.font.size = run_template.font.size
     
-    return nova_linha
+    # Retorna o índice da nova linha (última linha da tabela)
+    return len(table.rows) - 1
 
 
 def carregar_config_sprints():
@@ -963,8 +964,12 @@ def preencher_plano_trabalho(
         # Para cada tabela no documento
         for table_idx, table in enumerate(doc.tables):
             # Encontra linhas que contêm tags de sprint
+            # IMPORTANTE: Pula o cabeçalho (linha 0) e procura tags nas linhas seguintes
             linhas_template_sprint = []
             for row_idx, row in enumerate(table.rows):
+                # Pula o cabeçalho (linha 0)
+                if row_idx == 0:
+                    continue
                 # IMPORTANTE: Só adiciona se a linha CONTÉM tags de sprint
                 # Não preenche linhas normais sem tags
                 if linha_contem_tag_sprint(row) and not linha_contem_tag_profissional(row):
@@ -1016,26 +1021,44 @@ def preencher_plano_trabalho(
                 num_sprints = len(dados_sprints)
                 num_linhas_template = len(linhas_template_sprint)
                 
+                # Se há mais sprints que linhas template, cria linhas adicionais
+                if num_sprints > num_linhas_template:
+                    print(f"[DEBUG] Tabela {table_idx}: Criando {num_sprints - num_linhas_template} linha(s) adicional(is)")
+                    # Usa a última linha template como modelo para criar novas linhas
+                    ultima_linha_template_idx = linhas_template_sprint[-1]
+                    ultima_linha_template = table.rows[ultima_linha_template_idx]
+                    
+                    for i in range(num_linhas_template, num_sprints):
+                        # Duplica a última linha template
+                        nova_linha_idx = duplicar_linha_tabela(table, ultima_linha_template_idx)
+                        linhas_template_sprint.append(nova_linha_idx)
+                        print(f"[DEBUG] Tabela {table_idx}: Criada nova linha {nova_linha_idx}")
+                
                 # Preenche as linhas necessárias
-                for sprint_idx in range(min(num_sprints, num_linhas_template)):
+                for sprint_idx in range(num_sprints):
                     sprint_data = dados_sprints[sprint_idx]
-                    linha_idx = linhas_template_sprint[sprint_idx]
-                    linha = table.rows[linha_idx]
-                    preencher_linha_com_dados_sprint(linha, sprint_data, tags_sprint)
-                    print(f"[DEBUG] Preenchida linha {linha_idx} com dados da sprint {sprint_data.get('sprint', 'N/A')}")
+                    if sprint_idx < len(linhas_template_sprint):
+                        linha_idx = linhas_template_sprint[sprint_idx]
+                        linha = table.rows[linha_idx]
+                        preencher_linha_com_dados_sprint(linha, sprint_data, tags_sprint)
+                        print(f"[DEBUG] Preenchida linha {linha_idx} com dados da sprint {sprint_data.get('sprint', 'N/A')}")
+                    else:
+                        print(f"[DEBUG] ERRO: Não há linha template suficiente para sprint {sprint_idx}")
                 
                 # Remove linhas extras que não são necessárias (da última para a primeira)
-                if num_linhas_template > num_sprints:
-                    linhas_para_remover = num_linhas_template - num_sprints
+                if len(linhas_template_sprint) > num_sprints:
+                    linhas_para_remover = len(linhas_template_sprint) - num_sprints
                     print(f"[DEBUG] Removendo {linhas_para_remover} linha(s) extra(s) da tabela {table_idx}")
                     # Remove da última linha template para a primeira extra
-                    for idx in range(num_linhas_template - 1, num_sprints - 1, -1):
+                    for idx in range(len(linhas_template_sprint) - 1, num_sprints - 1, -1):
                         linha_idx_remover = linhas_template_sprint[idx]
                         try:
                             table._element.remove(table.rows[linha_idx_remover]._element)
                             print(f"[DEBUG] Removida linha {linha_idx_remover} da tabela {table_idx}")
                         except Exception as e:
                             print(f"[DEBUG] Erro ao remover linha {linha_idx_remover}: {e}")
+            else:
+                print(f"[DEBUG] Tabela {table_idx}: Nenhuma linha com tags de sprint encontrada")
         
     
     # -----------------------------
@@ -1083,6 +1106,9 @@ def preencher_plano_trabalho(
             grupos_sprint = {}  # {sprint_num: [(row_idx, row, prof_num), ...]}
             
             for row_idx, row in enumerate(table.rows):
+                # Pula o cabeçalho (linha 0)
+                if row_idx == 0:
+                    continue
                 sprint_num = identificar_sprint_num_na_linha(row)
                 if sprint_num is not None:
                     prof_num = identificar_prof_num_na_linha(row, sprint_num)
