@@ -119,30 +119,42 @@ def linha_contem_tag_sprint(row):
     for cell in row.cells:
         texto_linha += cell.text + ' '
     
-    # IMPORTANTE: Verifica se há tags explícitas com chaves {}
+    # CRITÉRIO 1: Se não tem chaves {}, não pode ser uma linha de template
+    tem_chaves = '{' in texto_linha and '}' in texto_linha
+    if not tem_chaves:
+        return False
+    
+    # CRITÉRIO 2: Verifica se há tags explícitas com chaves {}
     # Não aceita apenas palavras soltas como "Horas" - precisa ter a tag completa como "{SPRINTS_HORAS}"
-    # Verifica se pelo menos uma tag completa está presente no texto
     tem_tag = False
     for tag in tags_sprint:
         if tag in texto_linha:
             tem_tag = True
             break
     
-    # Verifica adicionalmente se há pelo menos uma chave {} no texto (garantia extra)
-    tem_chaves = '{' in texto_linha and '}' in texto_linha
+    # Se não tem tag explícita, não é uma linha de template
+    if not tem_tag:
+        return False
     
-    # IMPORTANTE: Se a linha contém palavras de cabeçalho mas não tem tags, não é uma linha de template
+    # CRITÉRIO 3: Verifica se é uma linha de cabeçalho (contém palavras de cabeçalho mas não tem tags reais)
     # Lista completa de palavras que aparecem em cabeçalhos de tabelas
     palavras_cabecalho = ['Fase', 'Sprint', 'Horas', 'OS*', 'Atividades', 'Entregáveis', 'Observação', 
                           'Perfil', 'Qtde', 'HSTs', 'Alocação', 'timebox', 'sprint (%)']
-    # Verifica se a linha contém MÚLTIPLAS palavras de cabeçalho (indicando que é um cabeçalho real)
+    # Verifica se a linha contém palavras de cabeçalho SEM tags correspondentes
+    # Exemplo: "Horas" sozinho não é tag, mas "{SPRINTS_HORAS}" é tag
     palavras_encontradas = sum(1 for palavra in palavras_cabecalho if palavra in texto_linha)
-    tem_apenas_cabecalho = palavras_encontradas >= 2 and not tem_chaves
+    # Se tem palavras de cabeçalho mas não tem tags correspondentes, é um cabeçalho
+    # Verifica se tem palavras como "Horas" mas não tem "{SPRINTS_HORAS}" ou "{SPRINTS_ HORAS}"
+    tem_palavra_horas = 'Horas' in texto_linha and '{SPRINTS_HORAS}' not in texto_linha and '{SPRINTS_ HORAS}' not in texto_linha
+    tem_palavra_sprint = 'Sprint' in texto_linha and '{SPRINT_ID}' not in texto_linha and '{SPRINT_OS}' not in texto_linha and '{OS_ID}' not in texto_linha
+    tem_palavra_fase = 'Fase' in texto_linha and '{SPRINT_ID}' not in texto_linha
+    
+    # Se tem múltiplas palavras de cabeçalho mas não tem tags correspondentes, é um cabeçalho
+    if palavras_encontradas >= 2 and (tem_palavra_horas or tem_palavra_sprint or tem_palavra_fase):
+        return False
     
     # CRITÉRIO FINAL: Só retorna True se tem tag E tem chaves E não é apenas cabeçalho
-    resultado = tem_tag and tem_chaves and not tem_apenas_cabecalho
-    
-    return resultado
+    return True
 
 
 def linha_contem_tag_profissional(row):
@@ -1019,24 +1031,32 @@ def preencher_plano_trabalho(
                 
                 # IMPORTANTE: Verifica se é uma linha de cabeçalho (contém múltiplas palavras de cabeçalho sem tags)
                 texto_linha_completo = ' '.join([cell.text.strip() for cell in row.cells])
-                palavras_cabecalho = ['Fase', 'Sprint', 'Horas', 'OS*', 'Atividades', 'Entregáveis', 'Observação']
-                palavras_encontradas = sum(1 for palavra in palavras_cabecalho if palavra in texto_linha_completo)
                 tem_chaves = '{' in texto_linha_completo and '}' in texto_linha_completo
                 
-                # Se tem múltiplas palavras de cabeçalho mas não tem tags, é um cabeçalho - PULA
-                if palavras_encontradas >= 2 and not tem_chaves:
-                    print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} é cabeçalho (ignorada): {texto_linha_completo[:60]}")
-                    continue
-                
-                # IMPORTANTE: Só adiciona se a linha CONTÉM tags de sprint
-                # Não preenche linhas normais sem tags
-                if linha_contem_tag_sprint(row) and not linha_contem_tag_profissional(row):
-                    # Verifica se realmente tem tags com chaves {} (não apenas palavras soltas)
-                    if '{' in texto_linha_completo and '}' in texto_linha_completo:
-                        linhas_template_sprint.append(row_idx)
-                        print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} contém tags de sprint: {row.cells[0].text[:50] if row.cells else 'N/A'}")
+                # CRITÉRIO 1: Se não tem chaves {}, não pode ser uma linha de template
+                if not tem_chaves:
+                    # Verifica se é um cabeçalho de colunas (contém palavras como "Fase", "Sprint", "Horas", etc.)
+                    palavras_cabecalho = ['Fase', 'Sprint', 'Horas', 'OS*', 'Atividades', 'Entregáveis', 'Observação']
+                    palavras_encontradas = sum(1 for palavra in palavras_cabecalho if palavra in texto_linha_completo)
+                    
+                    # Se tem pelo menos uma palavra de cabeçalho, é um cabeçalho - PULA
+                    if palavras_encontradas > 0:
+                        print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} é cabeçalho sem tags (ignorada): {texto_linha_completo[:60]}")
+                        continue
                     else:
-                        print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} tem palavra relacionada mas não tem tags reais (ignorada): {texto_linha_completo[:50]}")
+                        # Linha sem tags e sem palavras de cabeçalho - pode ser linha vazia ou título
+                        print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} não tem tags nem é cabeçalho (ignorada): {texto_linha_completo[:50]}")
+                        continue
+                
+                # CRITÉRIO 2: Verifica se tem tags explícitas de sprint
+                # IMPORTANTE: Só adiciona se a linha CONTÉM tags de sprint com chaves {}
+                # IMPORTANTE: A função linha_contem_tag_sprint já verifica se tem chaves e tags, então se retornar True, é válida
+                if linha_contem_tag_sprint(row) and not linha_contem_tag_profissional(row):
+                    linhas_template_sprint.append(row_idx)
+                    print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} contém tags de sprint: {row.cells[0].text[:50] if row.cells else 'N/A'}")
+                else:
+                    # Se não passou na verificação de tags, ignora
+                    print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} não passou na verificação de tags (ignorada): {texto_linha_completo[:50]}")
             
             # Se não encontrou linhas com tags, tenta identificar linhas COMPLETAMENTE VAZIAS
             # (útil quando o template tem linhas vazias sem tags, mas NÃO preenche linhas com dados normais)
