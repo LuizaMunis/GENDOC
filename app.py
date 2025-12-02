@@ -11,6 +11,13 @@ from dotenv import load_dotenv
 from services.redmine import buscar_demanda, formatar_dados
 from services.documento import preencher_plano_trabalho
 
+# Tenta importar redis para Vercel KV
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
 
@@ -259,59 +266,114 @@ def gerar_plano_trabalho():
         }), 500
 
 
+def get_redis_client():
+    """Cria e retorna um cliente Redis para Vercel KV."""
+    if not REDIS_AVAILABLE:
+        return None
+    
+    try:
+        # Vercel KV fornece essas variáveis de ambiente automaticamente
+        # Para projetos antigos: KV_REST_API_URL e KV_REST_API_TOKEN
+        # Para novos projetos do Marketplace: variáveis específicas do provedor
+        kv_url = os.getenv('KV_REST_API_URL') or os.getenv('UPSTASH_REDIS_REST_URL')
+        kv_token = os.getenv('KV_REST_API_TOKEN') or os.getenv('UPSTASH_REDIS_REST_TOKEN')
+        
+        if kv_url and kv_token:
+            # Vercel KV/Upstash usa HTTP REST API
+            return {
+                'url': kv_url.rstrip('/'),
+                'token': kv_token
+            }
+    except Exception as e:
+        print(f"[WARN] Erro ao configurar Redis: {e}")
+    
+    return None
+
+
 def get_projetos_file_path():
-    """Retorna o caminho do arquivo de projetos."""
-    # No Vercel, usa /tmp que é o único diretório gravável
-    # Em desenvolvimento local, usa o diretório config
-    if os.path.exists('/tmp'):
-        return '/tmp/projetos.json'
-    else:
-        return os.path.join(os.path.dirname(__file__), 'config', 'projetos.json')
+    """Retorna o caminho do arquivo de projetos (fallback para desenvolvimento local)."""
+    return os.path.join(os.path.dirname(__file__), 'config', 'projetos.json')
 
 
 def carregar_projetos():
-    """Carrega a lista de projetos do arquivo JSON."""
+    """Carrega a lista de projetos do Vercel KV ou arquivo JSON (fallback)."""
+    # Tenta carregar do Vercel KV primeiro
+    kv_client = get_redis_client()
+    if kv_client:
+        try:
+            import requests
+            # Upstash/Vercel KV REST API: GET /get/{key}
+            response = requests.get(
+                f"{kv_client['url']}/get/projetos",
+                headers={
+                    'Authorization': f"Bearer {kv_client['token']}"
+                },
+                timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                # Upstash retorna {'result': 'valor'} ou {'result': None}
+                if data.get('result'):
+                    return json.loads(data['result'])
+        except Exception as e:
+            print(f"[WARN] Erro ao carregar do KV, usando fallback: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # Fallback: carrega do arquivo JSON (desenvolvimento local)
     try:
         projetos_path = get_projetos_file_path()
-        
-        # Se o arquivo não existe em /tmp, tenta carregar do config original
-        if not os.path.exists(projetos_path):
-            # Tenta carregar do arquivo original em config/ (read-only no Vercel)
-            config_original = os.path.join(os.path.dirname(__file__), 'config', 'projetos.json')
-            if os.path.exists(config_original):
-                with open(config_original, 'r', encoding='utf-8') as f:
-                    projetos = json.load(f)
-                    # Se estamos em /tmp, copia para lá para poder modificar depois
-                    if projetos_path.startswith('/tmp'):
-                        salvar_projetos(projetos)
-                    return projetos
-            return []
-        
-        with open(projetos_path, 'r', encoding='utf-8') as f:
-            projetos = json.load(f)
-            return projetos
+        if os.path.exists(projetos_path):
+            with open(projetos_path, 'r', encoding='utf-8') as f:
+                projetos = json.load(f)
+                return projetos
     except Exception as e:
-        print(f"[ERROR] Erro ao carregar projetos: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+        print(f"[ERROR] Erro ao carregar projetos do arquivo: {e}")
+    
+    return []
 
 
 def salvar_projetos(projetos):
-    """Salva a lista de projetos no arquivo JSON."""
+    """Salva a lista de projetos no Vercel KV ou arquivo JSON (fallback)."""
+    # Tenta salvar no Vercel KV primeiro
+    kv_client = get_redis_client()
+    if kv_client:
+        try:
+            import requests
+            # Upstash/Vercel KV REST API: POST /set/{key}
+            projetos_json = json.dumps(projetos, ensure_ascii=False)
+            response = requests.post(
+                f"{kv_client['url']}/set/projetos",
+                headers={
+                    'Authorization': f"Bearer {kv_client['token']}",
+                    'Content-Type': 'application/json'
+                },
+                json=projetos_json,  # Upstash espera o valor diretamente no body JSON
+                timeout=5
+            )
+            if response.status_code == 200:
+                print("[INFO] Projetos salvos no Vercel KV com sucesso")
+                return True
+            else:
+                print(f"[WARN] Resposta inesperada do KV: {response.status_code} - {response.text}")
+        except Exception as e:
+            print(f"[WARN] Erro ao salvar no KV, usando fallback: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # Fallback: salva no arquivo JSON (desenvolvimento local)
     try:
         projetos_path = get_projetos_file_path()
-        
-        # Garante que o diretório existe (só necessário se não for /tmp)
         dir_path = os.path.dirname(projetos_path)
-        if dir_path and not projetos_path.startswith('/tmp'):
+        if dir_path:
             os.makedirs(dir_path, exist_ok=True)
         
         with open(projetos_path, 'w', encoding='utf-8') as f:
             json.dump(projetos, f, ensure_ascii=False, indent=2)
+        print("[INFO] Projetos salvos no arquivo local (fallback)")
         return True
     except Exception as e:
-        print(f"[ERROR] Erro ao salvar projetos: {e}")
+        print(f"[ERROR] Erro ao salvar projetos no arquivo: {e}")
         import traceback
         traceback.print_exc()
         return False
