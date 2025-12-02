@@ -261,14 +261,30 @@ def gerar_plano_trabalho():
 
 def get_projetos_file_path():
     """Retorna o caminho do arquivo de projetos."""
-    return os.path.join(os.path.dirname(__file__), 'config', 'projetos.json')
+    # No Vercel, usa /tmp que é o único diretório gravável
+    # Em desenvolvimento local, usa o diretório config
+    if os.path.exists('/tmp'):
+        return '/tmp/projetos.json'
+    else:
+        return os.path.join(os.path.dirname(__file__), 'config', 'projetos.json')
 
 
 def carregar_projetos():
     """Carrega a lista de projetos do arquivo JSON."""
     try:
         projetos_path = get_projetos_file_path()
+        
+        # Se o arquivo não existe em /tmp, tenta carregar do config original
         if not os.path.exists(projetos_path):
+            # Tenta carregar do arquivo original em config/ (read-only no Vercel)
+            config_original = os.path.join(os.path.dirname(__file__), 'config', 'projetos.json')
+            if os.path.exists(config_original):
+                with open(config_original, 'r', encoding='utf-8') as f:
+                    projetos = json.load(f)
+                    # Se estamos em /tmp, copia para lá para poder modificar depois
+                    if projetos_path.startswith('/tmp'):
+                        salvar_projetos(projetos)
+                    return projetos
             return []
         
         with open(projetos_path, 'r', encoding='utf-8') as f:
@@ -276,6 +292,8 @@ def carregar_projetos():
             return projetos
     except Exception as e:
         print(f"[ERROR] Erro ao carregar projetos: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -283,13 +301,19 @@ def salvar_projetos(projetos):
     """Salva a lista de projetos no arquivo JSON."""
     try:
         projetos_path = get_projetos_file_path()
-        os.makedirs(os.path.dirname(projetos_path), exist_ok=True)
+        
+        # Garante que o diretório existe (só necessário se não for /tmp)
+        dir_path = os.path.dirname(projetos_path)
+        if dir_path and not projetos_path.startswith('/tmp'):
+            os.makedirs(dir_path, exist_ok=True)
         
         with open(projetos_path, 'w', encoding='utf-8') as f:
             json.dump(projetos, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
         print(f"[ERROR] Erro ao salvar projetos: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -376,7 +400,8 @@ def adicionar_projeto():
             return jsonify(novo_projeto), 201
         else:
             return jsonify({
-                "error": "Erro ao salvar projeto"
+                "error": "Erro ao salvar projeto",
+                "message": "Não foi possível salvar o projeto. Verifique os logs do servidor."
             }), 500
             
     except Exception as e:
