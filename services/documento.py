@@ -118,7 +118,12 @@ def linha_contem_tag_sprint(row):
     texto_linha = ''
     for cell in row.cells:
         texto_linha += cell.text + ' '
-    return any(tag in texto_linha for tag in tags_sprint)
+    # IMPORTANTE: Verifica se há tags explícitas com chaves {}
+    # Não aceita apenas palavras soltas como "Horas" - precisa ter a tag completa como "{SPRINTS_HORAS}"
+    tem_tag = any(tag in texto_linha for tag in tags_sprint)
+    # Verifica adicionalmente se há pelo menos uma chave {} no texto (garantia extra)
+    tem_chaves = '{' in texto_linha and '}' in texto_linha
+    return tem_tag and tem_chaves
 
 
 def linha_contem_tag_profissional(row):
@@ -729,6 +734,9 @@ def preencher_tags_numeradas_item7(row, sprint_data, prof_data, sprint_num, prof
         tag_porcentagem_numerada = f'{{PORCENTAGEM_{sprint_num}_{prof_num}}}'
         tags_prof_numeradas[tag_porcentagem_numerada] = porcentagem_calculada
         print(f"[DEBUG] Tag de porcentagem adicionada: {tag_porcentagem_numerada} = {porcentagem_calculada}")
+    else:
+        # Se não há profissional, deixa tags vazias (serão ignoradas na substituição)
+        print(f"[DEBUG] Sem dados de profissional para sprint {sprint_num}, preenchendo apenas tags de sprint")
     
     # Preenche células de sprint primeiro (apenas na primeira linha do grupo).
     # IMPORTANTE: Preenche APENAS onde há tags. Se a célula não tiver tag, mantém como está (ex: "N/A")
@@ -773,26 +781,28 @@ def preencher_tags_numeradas_item7(row, sprint_data, prof_data, sprint_num, prof
             print(f"[DEBUG] Célula 1 não contém tag de tipo, mantendo conteúdo original (ex: 'N/A')")
     
     # Substitui todas as tags numeradas na linha
-    # IMPORTANTE: Não substitui tags de sprint nas células 0 e 1, pois já foram preenchidas diretamente
+    # IMPORTANTE: Tags de sprint nas células 0 e 1 já foram preenchidas diretamente acima
+    # Mas ainda precisa substituir tags de sprint em outras células (caso existam)
     for cell_idx, cell in enumerate(row.cells):
         for paragraph in cell.paragraphs:
-            # Substitui tags de sprint numeradas APENAS se NÃO for nas células de sprint (0 e 1)
-            # ou se não for a primeira linha do grupo (para evitar sobrescrever)
-            if primeira_linha_grupo and cell_idx >= 2:
-                # Substitui tags de sprint em outras colunas (caso existam)
-                for tag, valor in tags_sprint_numeradas.items():
-                    substituir_texto_em_paragrafo(paragraph, tag, str(valor))
+            # Substitui tags de sprint numeradas em TODAS as células (incluindo 0 e 1)
+            # Isso garante que tags como {SPRINT_ID_1} sejam substituídas mesmo se não foram preenchidas diretamente
+            for tag, valor in tags_sprint_numeradas.items():
+                if substituir_texto_em_paragrafo(paragraph, tag, str(valor)):
+                    print(f"[DEBUG] Tag de sprint {tag} substituída na célula {cell_idx} com valor: {valor}")
             
-            # Substitui tags de profissional numeradas
-            # IMPORTANTE: Porcentagem pode estar em qualquer célula, então processa todas as células
-            for tag, valor in tags_prof_numeradas.items():
-                # Se for tag de porcentagem, substitui em qualquer célula
-                if '{PORCENTAGEM' in tag:
-                    if substituir_texto_em_paragrafo(paragraph, tag, str(valor)):
-                        print(f"[DEBUG] Tag {tag} substituída na célula {cell_idx} com valor: {valor}")
-                # Para outras tags de profissional, só substitui nas células >= 2 (exceto sprint)
-                elif cell_idx >= 2:
-                    substituir_texto_em_paragrafo(paragraph, tag, str(valor))
+            # Substitui tags de profissional numeradas (apenas se houver profissional)
+            if tags_prof_numeradas:
+                # IMPORTANTE: Porcentagem pode estar em qualquer célula, então processa todas as células
+                for tag, valor in tags_prof_numeradas.items():
+                    # Se for tag de porcentagem, substitui em qualquer célula
+                    if '{PORCENTAGEM' in tag:
+                        if substituir_texto_em_paragrafo(paragraph, tag, str(valor)):
+                            print(f"[DEBUG] Tag {tag} substituída na célula {cell_idx} com valor: {valor}")
+                    # Para outras tags de profissional, só substitui nas células >= 2 (exceto sprint)
+                    elif cell_idx >= 2:
+                        if substituir_texto_em_paragrafo(paragraph, tag, str(valor)):
+                            print(f"[DEBUG] Tag de profissional {tag} substituída na célula {cell_idx} com valor: {valor}")
 
 
 def preencher_plano_trabalho(
@@ -973,8 +983,13 @@ def preencher_plano_trabalho(
                 # IMPORTANTE: Só adiciona se a linha CONTÉM tags de sprint
                 # Não preenche linhas normais sem tags
                 if linha_contem_tag_sprint(row) and not linha_contem_tag_profissional(row):
-                    linhas_template_sprint.append(row_idx)
-                    print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} contém tags de sprint: {row.cells[0].text[:50] if row.cells else 'N/A'}")
+                    # Verifica se realmente tem tags com chaves {} (não apenas palavras soltas)
+                    texto_linha_completo = ' '.join([cell.text for cell in row.cells])
+                    if '{' in texto_linha_completo and '}' in texto_linha_completo:
+                        linhas_template_sprint.append(row_idx)
+                        print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} contém tags de sprint: {row.cells[0].text[:50] if row.cells else 'N/A'}")
+                    else:
+                        print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} tem palavra relacionada mas não tem tags reais (ignorada): {texto_linha_completo[:50]}")
             
             # Se não encontrou linhas com tags, tenta identificar linhas COMPLETAMENTE VAZIAS
             # (útil quando o template tem linhas vazias sem tags, mas NÃO preenche linhas com dados normais)
@@ -1109,6 +1124,7 @@ def preencher_plano_trabalho(
                 # Pula o cabeçalho (linha 0)
                 if row_idx == 0:
                     continue
+                # Verifica tags numeradas primeiro
                 sprint_num = identificar_sprint_num_na_linha(row)
                 if sprint_num is not None:
                     prof_num = identificar_prof_num_na_linha(row, sprint_num)
@@ -1118,6 +1134,7 @@ def preencher_plano_trabalho(
                     if sprint_num not in grupos_sprint:
                         grupos_sprint[sprint_num] = []
                     grupos_sprint[sprint_num].append((row_idx, row, prof_num))
+                    print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} tem tags numeradas - Sprint {sprint_num}, Prof {prof_num}")
             
             # Se não encontrou linhas com tags numeradas, tenta identificar linhas COMPLETAMENTE VAZIAS
             # (útil quando o template tem linhas vazias sem tags, mas NÃO preenche linhas com dados normais)
@@ -1141,15 +1158,21 @@ def preencher_plano_trabalho(
                         if todas_vazias:
                             print(f"[DEBUG] Tabela {table_idx}: Linha {linha_atual} está completamente vazia, adicionando tags numeradas")
                             # Adiciona tags temporárias para que o preenchimento funcione
-                            if len(row.cells) > 0 and not row.cells[0].text.strip():
+                            if len(row.cells) > 0:
+                                # Limpa e adiciona tag na primeira célula
+                                row.cells[0].paragraphs[0].clear()
                                 row.cells[0].paragraphs[0].add_run(f'{{SPRINT_ID_{sprint_num}}}')
-                            if len(row.cells) > 1 and not row.cells[1].text.strip():
+                            if len(row.cells) > 1:
+                                row.cells[1].paragraphs[0].clear()
                                 row.cells[1].paragraphs[0].add_run(f'{{SPRINT_TIPO_{sprint_num}}}')
                             if len(row.cells) > 2:
+                                row.cells[2].paragraphs[0].clear()
                                 row.cells[2].paragraphs[0].add_run(f'{{PROF_TIPO_{sprint_num}_1}}')
                             if len(row.cells) > 3:
+                                row.cells[3].paragraphs[0].clear()
                                 row.cells[3].paragraphs[0].add_run(f'{{PROF_QTD_{sprint_num}_1}}')
                             if len(row.cells) > 4:
+                                row.cells[4].paragraphs[0].clear()
                                 row.cells[4].paragraphs[0].add_run(f'{{PROF_HORAS_{sprint_num}_1}}')
                             
                             if sprint_num not in grupos_sprint:
@@ -1186,14 +1209,39 @@ def preencher_plano_trabalho(
                 # O preenchimento já é feito pela função preencher_tags_numeradas_item7
                 
                 # Preenche linhas existentes
-                for idx in range(min(num_profissionais, num_linhas_template)):
-                    row_idx, row, prof_num_template = linhas_grupo[idx]
-                    prof_data = profissionais[idx]
-                    prof_num_real = idx + 1  # Profissionais numerados começam em 1
-                    primeira_linha_grupo = (idx == 0)  # Primeira linha do grupo de sprint
+                # IMPORTANTE: Se não houver profissionais, ainda preenche as tags de sprint
+                if num_profissionais > 0:
+                    # Tem profissionais: preenche normalmente
+                    for idx in range(min(num_profissionais, num_linhas_template)):
+                        row_idx, row, prof_num_template = linhas_grupo[idx]
+                        prof_data = profissionais[idx]
+                        prof_num_real = idx + 1  # Profissionais numerados começam em 1
+                        primeira_linha_grupo = (idx == 0)  # Primeira linha do grupo de sprint
+                        
+                        preencher_tags_numeradas_item7(row, sprint_data, prof_data, sprint_num, prof_num_real, primeira_linha_grupo)
+                        print(f"[DEBUG] Tabela {table_idx}: Preenchida linha {row_idx} - Sprint {sprint_num}, Profissional {prof_num_real} ({prof_data.get('tipo', 'N/A')})")
                     
-                    preencher_tags_numeradas_item7(row, sprint_data, prof_data, sprint_num, prof_num_real, primeira_linha_grupo)
-                    print(f"[DEBUG] Tabela {table_idx}: Preenchida linha {row_idx} - Sprint {sprint_num}, Profissional {prof_num_real} ({prof_data.get('tipo', 'N/A')})")
+                    # Remove linhas extras deste grupo (da última para a primeira)
+                    if num_linhas_template > num_profissionais:
+                        linhas_remover_grupo = linhas_grupo[num_profissionais:]
+                        for row_idx_remover, row_remover, _ in linhas_remover_grupo:
+                            linhas_para_remover.append((row_idx_remover, row_remover))
+                        print(f"[DEBUG] Tabela {table_idx}: Marcadas {len(linhas_remover_grupo)} linha(s) para remoção do grupo da sprint {sprint_num}")
+                else:
+                    # Não tem profissionais: preenche apenas tags de sprint na primeira linha
+                    if linhas_grupo:
+                        row_idx, row, _ = linhas_grupo[0]
+                        primeira_linha_grupo = True
+                        # Preenche apenas tags de sprint, sem dados de profissional
+                        preencher_tags_numeradas_item7(row, sprint_data, None, sprint_num, 1, primeira_linha_grupo)
+                        print(f"[DEBUG] Tabela {table_idx}: Preenchida linha {row_idx} - Sprint {sprint_num} (sem profissionais, apenas tags de sprint)")
+                        
+                        # Remove linhas extras deste grupo (mantém apenas a primeira)
+                        if num_linhas_template > 1:
+                            linhas_remover_grupo = linhas_grupo[1:]
+                            for row_idx_remover, row_remover, _ in linhas_remover_grupo:
+                                linhas_para_remover.append((row_idx_remover, row_remover))
+                            print(f"[DEBUG] Tabela {table_idx}: Marcadas {len(linhas_remover_grupo)} linha(s) para remoção do grupo da sprint {sprint_num} (sem profissionais)")
                 
                 # Remove linhas extras deste grupo (da última para a primeira)
                 if num_linhas_template > num_profissionais:
