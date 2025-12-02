@@ -4,6 +4,7 @@ Aplicação Flask para API GenDoc - Gestão de Demandas Redmine.
 from flask import Flask, jsonify, request, send_file, send_from_directory
 from flask_cors import CORS
 import os
+import sys
 import json
 import tempfile
 from dotenv import load_dotenv
@@ -23,7 +24,44 @@ CORS(app)
 @app.route('/')
 def index():
     """Rota para servir a página HTML principal."""
-    return send_from_directory('.', 'index.html')
+    try:
+        # Tenta encontrar o arquivo index.html no diretório raiz
+        index_path = os.path.join(os.path.dirname(__file__), 'index.html')
+        if os.path.exists(index_path):
+            return send_file(index_path, cache_timeout=0)
+        else:
+            # Se não encontrar, tenta no diretório atual
+            return send_from_directory('.', 'index.html', cache_timeout=0)
+    except Exception as e:
+        # Fallback caso não encontre o arquivo
+        return f"""
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>GenDoc API</title>
+                <meta charset="utf-8">
+                <style>
+                    body {{ font-family: Arial, sans-serif; padding: 20px; }}
+                    .status {{ color: green; font-weight: bold; }}
+                    a {{ color: #0070f3; text-decoration: none; }}
+                    a:hover {{ text-decoration: underline; }}
+                </style>
+            </head>
+            <body>
+                <h1>GenDoc API está funcionando! ✅</h1>
+                <p class="status">Status: API Online</p>
+                <p>O arquivo index.html não foi encontrado, mas a API está funcionando.</p>
+                <p><strong>Erro:</strong> {str(e)}</p>
+                <hr>
+                <h2>Endpoints disponíveis:</h2>
+                <ul>
+                    <li><a href="/health">/health</a> - Health check da API</li>
+                    <li><a href="/api/redmine/128910">/api/redmine/&lt;id&gt;</a> - Buscar demanda do Redmine</li>
+                    <li><a href="/api/projetos">/api/projetos</a> - Listar projetos</li>
+                </ul>
+            </body>
+        </html>
+        """, 200
 
 
 @app.route('/api/redmine/<demanda>', methods=['GET'])
@@ -75,9 +113,18 @@ def health_check():
     """
     Rota de health check para verificar se a API está funcionando.
     """
+    # Verifica se as variáveis de ambiente estão configuradas
+    redmine_key = os.getenv('REDMINE_API_KEY')
+    redmine_url = os.getenv('REDMINE_BASE_URL', 'https://redmine.saude.gov.br')
+    
     return jsonify({
         "status": "ok",
-        "service": "GenDoc API"
+        "service": "GenDoc API",
+        "environment": {
+            "redmine_api_key_configured": bool(redmine_key),
+            "redmine_base_url": redmine_url,
+            "python_version": sys.version.split()[0]
+        }
     }), 200
 
 

@@ -96,3 +96,4 @@ Após o deploy, teste os endpoints:
 - [Documentação Vercel Python](https://vercel.com/docs/concepts/functions/serverless-functions/runtimes/python)
 - [Documentação Flask](https://flask.palletsprojects.com/)
 
+
