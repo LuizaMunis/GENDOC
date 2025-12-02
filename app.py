@@ -28,10 +28,10 @@ def index():
         # Tenta encontrar o arquivo index.html no diretório raiz
         index_path = os.path.join(os.path.dirname(__file__), 'index.html')
         if os.path.exists(index_path):
-            return send_file(index_path, cache_timeout=0)
+            return send_file(index_path)
         else:
             # Se não encontrar, tenta no diretório atual
-            return send_from_directory('.', 'index.html', cache_timeout=0)
+            return send_from_directory('.', 'index.html')
     except Exception as e:
         # Fallback caso não encontre o arquivo
         return f"""
