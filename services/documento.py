@@ -1002,6 +1002,32 @@ def preencher_plano_trabalho(
                 if linha_contem_tag_sprint(row) and not linha_contem_tag_profissional(row):
                     linhas_template_sprint.append(row_idx)
             
+            # Se não encontrou linhas com tags, tenta identificar por posição/estrutura da tabela
+            # (útil quando o template tem linhas vazias sem tags)
+            if not linhas_template_sprint and len(table.rows) > 1:
+                # Pula o cabeçalho (primeira linha) e verifica se há linhas de dados vazias
+                # Assumindo que linhas após o cabeçalho podem ser templates
+                for row_idx in range(1, min(len(table.rows), len(dados_sprints) + 2)):
+                    row = table.rows[row_idx]
+                    # Se a linha está vazia ou tem poucos caracteres, pode ser template
+                    texto_linha = ' '.join([cell.text.strip() for cell in row.cells])
+                    if len(texto_linha.strip()) < 10:  # Linha praticamente vazia
+                        linhas_template_sprint.append(row_idx)
+                        # Adiciona tags temporárias para que o preenchimento funcione
+                        if len(row.cells) > 0:
+                            # Adiciona tag de sprint ID na primeira célula se estiver vazia
+                            if not row.cells[0].text.strip():
+                                row.cells[0].paragraphs[0].add_run('{SPRINT_ID}')
+                            if len(row.cells) > 1 and not row.cells[1].text.strip():
+                                row.cells[1].paragraphs[0].add_run('{SPRINT_TIPO}')
+                            if len(row.cells) > 2:
+                                if '{ATIVIDADES}' not in texto_linha:
+                                    row.cells[2].paragraphs[0].add_run('{ATIVIDADES}')
+                            if len(row.cells) > 3:
+                                if '{ENTREGAVEIS}' not in texto_linha:
+                                    row.cells[3].paragraphs[0].add_run('{ENTREGAVEIS}')
+                        break  # Para após encontrar a primeira linha template
+            
             # Se encontrou linhas de template de sprint
             if linhas_template_sprint:
                 print(f"[DEBUG] Tabela {table_idx}: Encontradas {len(linhas_template_sprint)} linha(s) de template de sprint")
@@ -1086,6 +1112,38 @@ def preencher_plano_trabalho(
                     if sprint_num not in grupos_sprint:
                         grupos_sprint[sprint_num] = []
                     grupos_sprint[sprint_num].append((row_idx, row, prof_num))
+            
+            # Se não encontrou linhas com tags numeradas, tenta identificar por estrutura
+            # (útil quando o template tem linhas vazias sem tags)
+            if not grupos_sprint and len(table.rows) > 1 and dados_sprints:
+                print(f"[DEBUG] Tabela {table_idx}: Nenhuma tag numerada encontrada, tentando identificar linhas vazias")
+                # Pula o cabeçalho (primeira linha) e cria grupos baseados na posição
+                linha_atual = 1
+                for sprint_idx, sprint_data in enumerate(dados_sprints):
+                    sprint_num = sprint_idx + 1
+                    if linha_atual < len(table.rows):
+                        row = table.rows[linha_atual]
+                        texto_linha = ' '.join([cell.text.strip() for cell in row.cells])
+                        # Se a linha está vazia ou tem poucos caracteres, pode ser template
+                        if len(texto_linha.strip()) < 10:
+                            # Adiciona tags temporárias para que o preenchimento funcione
+                            if len(row.cells) > 0 and not row.cells[0].text.strip():
+                                row.cells[0].paragraphs[0].add_run(f'{{SPRINT_ID_{sprint_num}}}')
+                            if len(row.cells) > 1 and not row.cells[1].text.strip():
+                                row.cells[1].paragraphs[0].add_run(f'{{SPRINT_TIPO_{sprint_num}}}')
+                            if len(row.cells) > 2 and '{PROF_TIPO' not in texto_linha:
+                                row.cells[2].paragraphs[0].add_run(f'{{PROF_TIPO_{sprint_num}_1}}')
+                            if len(row.cells) > 3 and '{PROF_QTD' not in texto_linha:
+                                row.cells[3].paragraphs[0].add_run(f'{{PROF_QTD_{sprint_num}_1}}')
+                            if len(row.cells) > 4 and '{PROF_HORAS' not in texto_linha:
+                                row.cells[4].paragraphs[0].add_run(f'{{PROF_HORAS_{sprint_num}_1}}')
+                            
+                            if sprint_num not in grupos_sprint:
+                                grupos_sprint[sprint_num] = []
+                            grupos_sprint[sprint_num].append((linha_atual, row, 1))
+                            linha_atual += 1
+                        else:
+                            linha_atual += 1
             
             print(f"[DEBUG] Tabela {table_idx}: Encontrados {len(grupos_sprint)} grupo(s) de sprint")
             
