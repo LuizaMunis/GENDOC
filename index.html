@@ -810,6 +810,7 @@
                     <form id="formAddInfo">
                         <input type="hidden" id="modalSprintId" name="sprintId">
                         <input type="hidden" id="modalOSId" name="osId">
+                        <input type="hidden" id="modalTipoSprint" name="tipoSprint">
                         
                         <div class="form-group-modal">
                             <label for="horasSprint">Horas da Sprint</label>
@@ -1173,7 +1174,7 @@
                         <td class="btn-add-info-cell">
                             <button 
                                 class="btn-add-info" 
-                                onclick="adicionarInfo('${linha.sprint || ''}', '${linha.os || ''}')"
+                                onclick="adicionarInfo('${linha.sprint || ''}', '${linha.os || ''}', '${linha.tipo || ''}')"
                             >
                                 Add Info
                             </button>
@@ -1273,7 +1274,7 @@
         let contadorProfissionais = 0;
 
         // Função para abrir o modal de adicionar informações
-        function adicionarInfo(sprintId, osId) {
+        function adicionarInfo(sprintId, osId, tipoSprint) {
             if (!sprintId) {
                 alert('ID da Sprint não encontrado.');
                 return;
@@ -1287,6 +1288,7 @@
             // Preenche os IDs
             document.getElementById('modalSprintId').value = sprintId;
             document.getElementById('modalOSId').value = osId;
+            document.getElementById('modalTipoSprint').value = tipoSprint || '';
             
             // Tenta carregar dados salvos do localStorage
             const chaveLocalStorage = `sprint_${sprintId}_info`;
@@ -1432,11 +1434,16 @@
                     return;
                 }
                 
+                // Verifica o tipo da sprint
+                const tipoSprint = document.getElementById('modalTipoSprint').value.trim();
+                const isDesenvolvimento = tipoSprint.toLowerCase() === 'desenvolvimento';
+                
                 // Coleta dados dos profissionais
                 const profissionais = [];
                 const profissionalItems = document.querySelectorAll('.profissional-item');
                 
-                if (profissionalItems.length === 0) {
+                // IMPORTANTE: Para tipo "Desenvolvimento", não é obrigatório adicionar profissional
+                if (profissionalItems.length === 0 && !isDesenvolvimento) {
                     alert('Por favor, adicione pelo menos um profissional.');
                     return;
                 }
@@ -1477,7 +1484,8 @@
                     });
                 });
                 
-                if (profissionais.length === 0) {
+                // IMPORTANTE: Para tipo "Desenvolvimento", permite salvar sem profissional
+                if (profissionais.length === 0 && !isDesenvolvimento) {
                     alert('Por favor, adicione pelo menos um profissional válido.');
                     return;
                 }

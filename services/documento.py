@@ -509,9 +509,20 @@ def escrever_valor_em_celula(cell, valor):
 def preencher_linha_com_dados_sprint(row, sprint_data, tags_sprint):
     """Preenche uma linha com dados de uma sprint preservando formatação."""
     # Primeiro, substitui todas as tags preservando formatação
-    for cell in row.cells:
+    for cell_idx, cell in enumerate(row.cells):
         for paragraph in cell.paragraphs:
+            # IMPORTANTE: Obtém o texto original UMA VEZ antes do loop
+            texto_original = paragraph.text
+            
+            # Processa cada tag
             for tag, campo in tags_sprint.items():
+                # Verifica se a tag está presente no texto original
+                if tag not in texto_original:
+                    # Log apenas para tags importantes que não foram encontradas
+                    if tag in ['{SPRINT_ID}', '{SPRINT_TIPO}']:
+                        print(f"[DEBUG] [WARN] Tag {tag} não encontrada na célula {cell_idx} (texto: {texto_original[:50]})")
+                    continue
+                
                 # Lógica especial para diferenciar HST original de horas sprint do usuário
                 if tag == '{SPRINT_HST}':
                     # Tabela 10: usa HST original do Redmine
@@ -531,7 +542,16 @@ def preencher_linha_com_dados_sprint(row, sprint_data, tags_sprint):
                     print(f"[DEBUG] Preenchendo {tag} para sprint tipo '{tipo_sprint}': {valor}")
                 else:
                     valor = str(sprint_data.get(campo, ''))
-                substituir_texto_em_paragrafo(paragraph, tag, valor)
+                
+                # IMPORTANTE: Atualiza o texto original após cada substituição bem-sucedida
+                # para que a próxima iteração use o texto atualizado
+                substituido = substituir_texto_em_paragrafo(paragraph, tag, valor)
+                if substituido:
+                    print(f"[DEBUG] Tag {tag} substituída na célula {cell_idx} com valor: {valor}")
+                    # Atualiza o texto original para a próxima iteração
+                    texto_original = paragraph.text
+                else:
+                    print(f"[DEBUG] [WARN] Tag {tag} encontrada mas não foi substituída na célula {cell_idx}")
     
     # IMPORTANTE: NÃO substitui valores diretos em células que não têm tags
     # Só preenche onde há tags explícitas para evitar sobrescrever dados normais
