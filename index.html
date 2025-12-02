@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenDoc - Gestão de Demandas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1F1F1F 0%, #2A2A2A 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1F1F1F;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #FF8A00 0%, #FF6A00 100%);
+            padding: 24px 32px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 20px rgba(255, 138, 0, 0.3);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* Card de Busca */
+        .search-card {
+            background: #F7F7F7;
+            padding: 32px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-form {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #1F1F1F;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #E0E0E0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #FF8A00;
+            box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
+        }
+
+        .btn-search {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #FF8A00 0%, #FF6A00 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(255, 138, 0, 0.3);
+        }
+
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 138, 0, 0.4);
+        }
+
+        .btn-search:active {
+            transform: translateY(0);
+        }
+
+        .btn-search svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Card da Tabela */
+        .table-card {
+            background: #F7F7F7;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #FF6A00 0%, #FF8A00 100%);
+        }
+
+        thead th {
+            padding: 16px;
+            text-align: left;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #E0E0E0;
+            transition: background-color 0.2s ease;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #F7F7F7;
+        }
+
+        tbody tr:nth-child(odd) {
+            background: white;
+        }
+
+        tbody tr:hover {
+            background: #FFF5E6;
+        }
+
+        tbody td {
+            padding: 16px;
+            font-size: 14px;
+            color: #1F1F1F;
+        }
+
+        .editable-cell {
+            position: relative;
+        }
+
+        .editable-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #FF8A00;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            background: white;
+            transition: all 0.2s ease;
+        }
+
+        .editable-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .btn-search:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Botão Add Info */
+        .btn-add-info {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #FF8A00 0%, #FF6A00 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(255, 138, 0, 0.2);
+        }
+
+        .btn-add-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 138, 0, 0.3);
+        }
+
+        .btn-add-info:active {
+            transform: translateY(0);
+        }
+
+        .btn-add-info-cell {
+            text-align: center;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #E0E0E0;
+        }
+
+        .modal-header h2 {
+            color: #1F1F1F;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: #F7F7F7;
+            color: #1F1F1F;
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+        }
+
+        .form-group-modal {
+            margin-bottom: 20px;
+        }
+
+        .form-group-modal label {
+            display: block;
+            font-weight: 600;
+            color: #1F1F1F;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group-modal input,
+        .form-group-modal select,
+        .form-group-modal textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #E0E0E0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group-modal textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group-modal input:focus,
+        .form-group-modal select:focus,
+        .form-group-modal textarea:focus {
+            outline: none;
+            border-color: #FF8A00;
+            box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
+        }
+
+        .profissionais-section {
+            margin-top: 32px;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        #profissionaisList {
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .profissionais-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .profissionais-header h3 {
+            color: #1F1F1F;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .btn-add-profissional {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #FF8A00 0%, #FF6A00 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(255, 138, 0, 0.2);
+        }
+
+        .btn-add-profissional:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 138, 0, 0.3);
+        }
+
+        .profissional-item {
+            background: #F7F7F7;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: grid;
+            grid-template-columns: minmax(200px, 2fr) 100px minmax(120px, 1fr) 90px;
+            gap: 12px;
+            align-items: center;
+            border: 2px solid #E0E0E0;
+            transition: all 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .profissional-item:hover {
+            border-color: #FF8A00;
+            box-shadow: 0 2px 8px rgba(255, 138, 0, 0.1);
+        }
+
+        .profissional-item select {
+            padding: 10px 14px;
+            border: 2px solid #E0E0E0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            background: white;
+            color: #1F1F1F;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23FF8A00' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
+        }
+
+        .profissional-item select:focus {
+            outline: none;
+            border-color: #FF8A00;
+            box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
+        }
+
+        .profissional-item select:hover {
+            border-color: #FF8A00;
+        }
+
+        .profissional-item input[type="number"] {
+            padding: 10px 12px;
+            border: 2px solid #E0E0E0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            background: white;
+            color: #1F1F1F;
+            transition: all 0.3s ease;
+        }
+
+        .profissional-item input[type="number"]:focus {
+            outline: none;
+            border-color: #FF8A00;
+            box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
+        }
+
+        .profissional-item input[type="number"]:hover {
+            border-color: #FF8A00;
+        }
+
+        .profissional-quantidade {
+            width: 100%;
+            max-width: 100px;
+            text-align: center;
+        }
+
+        .btn-remove-profissional {
+            padding: 10px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+            white-space: nowrap;
+            width: 100%;
+            min-width: 80px;
+            max-width: 90px;
+        }
+
+        .btn-remove-profissional:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-remove-profissional:active {
+            transform: translateY(0);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-top: 24px;
+            border-top: 2px solid #E0E0E0;
+        }
+
+        .btn-cancel {
+            padding: 12px 24px;
+            background: #E0E0E0;
+            color: #1F1F1F;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel:hover {
+            background: #D0D0D0;
+        }
+
+        .btn-save {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #FF8A00 0%, #FF6A00 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(255, 138, 0, 0.2);
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 138, 0, 0.3);
+        }
+
+        /* Botão Gerar Plano de Trabalho */
+        .btn-gerar-pt {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #FF8A00 0%, #FF6A00 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(255, 138, 0, 0.3);
+            display: none;
+            margin-top: 24px;
+        }
+
+        .btn-gerar-pt.visible {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-gerar-pt:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 138, 0, 0.4);
+        }
+
+        .btn-gerar-pt:active {
+            transform: translateY(0);
+        }
+
+        .btn-gerar-pt-container {
+            text-align: center;
+            margin-top: 24px;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Botão Ver Projetos */
+        .btn-ver-projetos {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 24px;
+        }
+
+        .btn-ver-projetos:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-ver-projetos:active {
+            transform: translateY(0);
+        }
+
+        /* Lista de Projetos */
+        .projeto-item {
+            background: #F7F7F7;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid #FF8A00;
+        }
+
+        .projeto-item h4 {
+            margin: 0 0 12px 0;
+            color: #1F1F1F;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .projeto-item .projeto-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .projeto-item .projeto-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .projeto-item .projeto-info-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .projeto-item .projeto-info-value {
+            font-size: 14px;
+            color: #1F1F1F;
+        }
+
+        .projeto-item .projeto-introducao {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #E0E0E0;
+        }
+
+        .projeto-item .projeto-introducao-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .projeto-item .projeto-introducao-value {
+            font-size: 14px;
+            color: #1F1F1F;
+            line-height: 1.5;
+        }
+
+        .projeto-item textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E0E0E0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            resize: vertical;
+        }
+
+        .projeto-item textarea:focus {
+            outline: none;
+            border-color: #FF8A00;
+            box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
+        }
+
+        .empty-projetos {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-projetos p {
+            font-size: 16px;
+        }
+
+        /* Card de Informações da Demanda */
+        .demanda-info-card {
+            background: #F7F7F7;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .demanda-info-card.visible {
+            display: block;
+        }
+
+        .demanda-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1F1F1F;
+        }
+
+        .info-value.highlight {
+            color: #FF8A00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>GenDoc</h1>
+        </header>
+
+        <!-- Card de Busca -->
+        <div class="search-card">
+            <form class="search-form" id="searchForm" onsubmit="event.preventDefault(); buscarDemanda();">
+                <div class="form-group">
+                    <label for="demanda">Número da Demanda</label>
+                    <input 
+                        type="text" 
+                        id="demanda" 
+                        name="demanda" 
+                        placeholder="Digite o número da demanda"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn-search">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Buscar
+                </button>
+            </form>
+        </div>
+
+        <!-- Card de Informações da Demanda -->
+        <div id="demandaInfoCard" class="demanda-info-card">
+            <div class="demanda-info-grid">
+                <div class="info-item">
+                    <span class="info-label">Demanda</span>
+                    <span class="info-value" id="infoDemanda">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">PT</span>
+                    <span class="info-value" id="infoPT">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Nome do Projeto</span>
+                    <span class="info-value" id="infoNome">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Valor da Demanda</span>
+                    <span class="info-value highlight" id="infoValorDemanda">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Add Info -->
+        <div id="modalAddInfo" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Adicionar Informações da Sprint</h2>
+                    <button class="modal-close" onclick="fecharModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAddInfo">
+                        <input type="hidden" id="modalSprintId" name="sprintId">
+                        <input type="hidden" id="modalOSId" name="osId">
+                        
+                        <div class="form-group-modal">
+                            <label for="horasSprint">Horas da Sprint</label>
+                            <input 
+                                type="number" 
+                                id="horasSprint" 
+                                name="horasSprint" 
+                                placeholder="Digite as horas da sprint"
+                                min="0"
+                                step="0.01"
+                            >
+                        </div>
+
+                        <div class="profissionais-section">
+                            <div class="profissionais-header">
+                                <h3>Profissionais</h3>
+                                <button type="button" class="btn-add-profissional" onclick="adicionarProfissional()">
+                                    + Add Profissional
+                                </button>
+                            </div>
+                            <div id="profissionaisList">
+                                <!-- Profissionais serão adicionados aqui dinamicamente -->
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+                    <button type="button" class="btn-save" onclick="salvarInformacoes()">Salvar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card da Tabela -->
+        <div class="table-card">
+            <div class="table-wrapper">
+                <table id="dataTable" class="hidden">
+                    <thead>
+                        <tr>
+                            <th>OS</th>
+                            <th>Sprint</th>
+                            <th>Tipo</th>
+                            <th>HST</th>
+                            <th>Valor H Sprint</th>
+                            <th>Valor Total</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Dados serão preenchidos via JavaScript -->
+                    </tbody>
+                </table>
+                <div id="emptyState" class="empty-state">
+                    <p>Digite um número de demanda e clique em Buscar para visualizar os dados.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botão Gerar Plano de Trabalho -->
+        <div class="btn-gerar-pt-container">
+            <button id="btnGerarPT" class="btn-gerar-pt" onclick="gerarPlanoTrabalho()">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Gerar Plano de Trabalho
+            </button>
+            
+            <button id="btnVerProjetos" class="btn-ver-projetos" onclick="abrirModalProjetos()">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Ver Projetos
+            </button>
+        </div>
+
+        <!-- Modal de Projetos -->
+        <div id="modalProjetos" class="modal-overlay">
+            <div class="modal-content" style="max-width: 1000px;">
+                <div class="modal-header">
+                    <h2>Gerenciar Projetos</h2>
+                    <button class="modal-close" onclick="fecharModalProjetos()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; color: #1F1F1F; font-size: 18px;">Lista de Projetos</h3>
+                        <button type="button" class="btn-save" onclick="mostrarFormularioProjeto()">
+                            + ADD Projeto
+                        </button>
+                    </div>
+
+                    <!-- Lista de Projetos -->
+                    <div id="listaProjetos" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Projetos serão carregados aqui -->
+                    </div>
+
+                    <!-- Formulário de Adicionar/Editar Projeto -->
+                    <div id="formularioProjeto" style="display: none; margin-top: 24px; padding-top: 24px; border-top: 2px solid #E0E0E0;">
+                        <h3 style="margin-bottom: 16px; color: #1F1F1F; font-size: 18px;">Novo Projeto</h3>
+                        <form id="formProjeto">
+                            <div class="form-group-modal" style="margin-bottom: 20px;">
+                                <label for="nomeProjeto">Nome do Projeto *</label>
+                                <input type="text" id="nomeProjeto" name="nomeProjeto" required placeholder="Digite o nome do projeto">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px;">
+                                <!-- Coluna Esquerda: Dados do Gestor -->
+                                <div>
+                                    <h4 style="margin: 0 0 16px 0; color: #1F1F1F; font-size: 16px; font-weight: 600;">Gestor do Projeto</h4>
+                                    <div class="form-group-modal">
+                                        <label for="gestorNome">Nome *</label>
+                                        <input type="text" id="gestorNome" name="gestorNome" required placeholder="Nome do Gestor">
+                                    </div>
+                                    <div class="form-group-modal">
+                                        <label for="gestorEmail">Email *</label>
+                                        <input type="email" id="gestorEmail" name="gestorEmail" required placeholder="email@exemplo.com">
+                                    </div>
+                                    <div class="form-group-modal">
+                                        <label for="gestorCelular">Celular *</label>
+                                        <input type="tel" id="gestorCelular" name="gestorCelular" required placeholder="(00) 00000-0000">
+                                    </div>
+                                </div>
+                                
+                                <!-- Coluna Direita: Dados do Gerente -->
+                                <div>
+                                    <h4 style="margin: 0 0 16px 0; color: #1F1F1F; font-size: 16px; font-weight: 600;">Gerente de Projeto</h4>
+                                    <div class="form-group-modal">
+                                        <label for="gerenteNome">Nome *</label>
+                                        <input type="text" id="gerenteNome" name="gerenteNome" required placeholder="Nome do Gerente">
+                                    </div>
+                                    <div class="form-group-modal">
+                                        <label for="gerenteEmail">Email *</label>
+                                        <input type="email" id="gerenteEmail" name="gerenteEmail" required placeholder="email@exemplo.com">
+                                    </div>
+                                    <div class="form-group-modal">
+                                        <label for="gerenteTelefone">Telefone *</label>
+                                        <input type="tel" id="gerenteTelefone" name="gerenteTelefone" required placeholder="(00) 0000-0000">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group-modal" style="grid-column: 1 / -1; margin-top: 16px;">
+                                <label for="introducaoProjeto">Introdução do Projeto *</label>
+                                <textarea id="introducaoProjeto" name="introducaoProjeto" rows="4" required placeholder="Descreva a introdução do projeto"></textarea>
+                            </div>
+                        </form>
+                        <div class="modal-footer" style="margin-top: 24px; padding-top: 16px;">
+                            <button type="button" class="btn-cancel" onclick="cancelarFormularioProjeto()">Cancelar</button>
+                            <button type="button" class="btn-save" onclick="salvarProjeto()">Salvar Projeto</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis globais para armazenar dados
+        let dadosSprintsAtuais = [];
+        let dadosProfissionaisAtuais = {};
+        
+        // Dados mock
+        const dadosMock = {
+            "demanda": "128910",
+            "pt": "129199",
+            "os": "129200",
+            "sprint": "129201",
+            "tipo": "Manutenção",
+            "nome": "Subproj GAL",
+            "hst": "160",
+            "valor_h_sprint": "R$ 244,67",
+            "valor_total": "R$ 39.147,20",
+            "valor_demanda": "R$ 78.294,40"
+        };
+
+        // Função para buscar demanda na API
+        async function buscarDemanda() {
+            const inputDemanda = document.getElementById('demanda');
+            const numeroDemanda = inputDemanda.value.trim();
+            const btnSearch = document.querySelector('.btn-search');
+
+            if (!numeroDemanda) {
+                alert('Por favor, digite um número de demanda.');
+                return;
+            }
+
+            // Desabilita o botão durante a busca
+            btnSearch.disabled = true;
+            btnSearch.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="animation: spin 1s linear infinite;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Buscando...
+            `;
+
+            try {
+                // Faz a requisição para a API Flask (usando URL absoluta para funcionar abrindo o arquivo local)
+                const response = await fetch(`http://127.0.0.1:5000/api/redmine/${numeroDemanda}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Sucesso: preenche a tabela com os dados
+                    preencherTabela(data);
+                } else if (response.status === 404) {
+                    // Demanda não encontrada
+                    alert(`Demanda ${numeroDemanda} não encontrada.`);
+                    esconderTabela();
+                } else {
+                    // Erro do servidor
+                    alert(`Erro ao buscar demanda: ${data.message || 'Erro desconhecido'}`);
+                    esconderTabela();
+                }
+            } catch (error) {
+                // Erro de rede ou conexão
+                console.error('Erro ao buscar demanda:', error);
+                alert('Erro ao conectar com o servidor. Verifique se a API está rodando.');
+                esconderTabela();
+            } finally {
+                // Reabilita o botão
+                btnSearch.disabled = false;
+                btnSearch.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Buscar
+                `;
+            }
+        }
+
+        // Função para esconder a tabela e mostrar estado vazio
+        function esconderTabela() {
+            const dataTable = document.getElementById('dataTable');
+            const emptyState = document.getElementById('emptyState');
+            const demandaInfoCard = document.getElementById('demandaInfoCard');
+            dataTable.classList.add('hidden');
+            demandaInfoCard.classList.remove('visible');
+            emptyState.classList.remove('hidden');
+            
+            // Esconde o botão Gerar Plano de Trabalho
+            document.getElementById('btnGerarPT').classList.remove('visible');
+        }
+
+        // Função para gerar Plano de Trabalho
+        async function gerarPlanoTrabalho() {
+            const demandaId = document.getElementById('infoDemanda').textContent;
+            const ptId = document.getElementById('infoPT').textContent;
+            const nomeProjeto = document.getElementById('infoNome').textContent;
+            const valorDemanda = document.getElementById('infoValorDemanda').textContent;
+            
+            if (!demandaId || demandaId === '-') {
+                alert('Por favor, busque uma demanda primeiro.');
+                return;
+            }
+            
+            // Prepara dados da demanda
+            const dadosDemanda = {
+                demanda: demandaId,
+                pt: ptId,
+                nome: nomeProjeto,
+                valor_demanda: valorDemanda
+            };
+            
+            const btnGerar = document.getElementById('btnGerarPT');
+            btnGerar.disabled = true;
+            btnGerar.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; animation: spin 1s linear infinite;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Gerando...
+            `;
+            
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/gerar-plano-trabalho', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        demanda: demandaId,
+                        dados_demanda: dadosDemanda,
+                        dados_sprints: dadosSprintsAtuais,
+                        dados_profissionais: dadosProfissionaisAtuais
+                    })
+                });
+                
+                if (response.ok) {
+                    // Verifica se a resposta é realmente um arquivo
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/vnd.openxmlformats')) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Plano_Trabalho_${demandaId}.docx`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        console.log('Arquivo baixado com sucesso!');
+                    } else {
+                        // Se não for um arquivo, tenta ler como JSON para ver o erro
+                        const errorData = await response.json();
+                        alert(`Erro ao gerar documento: ${errorData.message || errorData.error || 'Resposta inválida do servidor'}`);
+                    }
+                } else {
+                    // Tenta ler a resposta como JSON
+                    let errorMessage = 'Erro desconhecido';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.message || errorData.error || `Erro ${response.status}`;
+                    } catch (e) {
+                        errorMessage = `Erro ${response.status}: ${response.statusText}`;
+                    }
+                    alert(`Erro ao gerar documento: ${errorMessage}`);
+                }
+            } catch (error) {
+                console.error('Erro ao gerar Plano de Trabalho:', error);
+                alert('Erro ao conectar com o servidor para gerar o documento. Verifique se a API está rodando.');
+            } finally {
+                btnGerar.disabled = false;
+                btnGerar.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Gerar Plano de Trabalho
+                `;
+            }
+        }
+
+        // Função para preencher a tabela
+        function preencherTabela(dados) {
+            const tableBody = document.getElementById('tableBody');
+            const dataTable = document.getElementById('dataTable');
+            const emptyState = document.getElementById('emptyState');
+            const demandaInfoCard = document.getElementById('demandaInfoCard');
+
+            // Limpa o conteúdo anterior
+            tableBody.innerHTML = '';
+
+            // Verifica se dados é um array ou um objeto único
+            const linhas = Array.isArray(dados) ? dados : [dados];
+
+            if (linhas.length > 0) {
+                // Preenche informações da demanda (apenas uma vez, usando a primeira linha)
+                const primeiraLinha = linhas[0];
+                document.getElementById('infoDemanda').textContent = primeiraLinha.demanda || '-';
+                document.getElementById('infoPT').textContent = primeiraLinha.pt || '-';
+                document.getElementById('infoNome').textContent = primeiraLinha.nome || '-';
+                document.getElementById('infoValorDemanda').textContent = primeiraLinha.valor_demanda || '-';
+                
+                // Mostra o card de informações
+                demandaInfoCard.classList.add('visible');
+
+                // Cria uma linha para cada Sprint encontrada (apenas dados que variam)
+                linhas.forEach((linha) => {
+                    const row = document.createElement('tr');
+                    
+                    // Colunas: OS, Sprint, Tipo, HST (não editável), Valor H Sprint, Valor Total, Ações
+                    row.innerHTML = `
+                        <td>${linha.os || ''}</td>
+                        <td>${linha.sprint || ''}</td>
+                        <td>${linha.tipo || ''}</td>
+                        <td>${linha.hst || ''}</td>
+                        <td>${linha.valor_h_sprint || ''}</td>
+                        <td>${linha.valor_total || ''}</td>
+                        <td class="btn-add-info-cell">
+                            <button 
+                                class="btn-add-info" 
+                                onclick="adicionarInfo('${linha.sprint || ''}', '${linha.os || ''}')"
+                            >
+                                Add Info
+                            </button>
+                        </td>
+                    `;
+
+                    tableBody.appendChild(row);
+                });
+
+                // Mostra a tabela e esconde o estado vazio
+                dataTable.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                
+                // Armazena dados das sprints para uso na geração do documento
+                // IMPORTANTE: Preserva o HST original do Redmine como hst_redmine
+                dadosSprintsAtuais = linhas.map(linha => {
+                    // Se já tem hst_redmine preservado, mantém; senão, preserva o hst original
+                    if (!linha.hst_redmine && linha.hst) {
+                        linha.hst_redmine = linha.hst;
+                    }
+                    return linha;
+                });
+                
+                // Carrega dados salvos do localStorage para cada sprint
+                linhas.forEach(linha => {
+                    const sprintId = linha.sprint;
+                    if (sprintId) {
+                        const chaveLocalStorage = `sprint_${sprintId}_info`;
+                        const dadosSalvos = localStorage.getItem(chaveLocalStorage);
+                        
+                        if (dadosSalvos) {
+                            try {
+                                const dados = JSON.parse(dadosSalvos);
+                                dadosProfissionaisAtuais[sprintId] = dados.profissionais || [];
+                            } catch (error) {
+                                console.error(`Erro ao carregar dados da sprint ${sprintId}:`, error);
+                            }
+                        }
+                    }
+                });
+                
+                // Mostra o botão Gerar Plano de Trabalho
+                document.getElementById('btnGerarPT').classList.add('visible');
+            } else {
+                // Esconde tudo se não houver dados
+                demandaInfoCard.classList.remove('visible');
+                dataTable.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                
+                // Esconde o botão Gerar Plano de Trabalho
+                document.getElementById('btnGerarPT').classList.remove('visible');
+            }
+        }
+
+        // Função para salvar horas editadas
+        function salvarHoras(input) {
+            const novoValor = input.value.trim();
+            const valorOriginal = input.getAttribute('data-original');
+
+            // Validação básica (pode ser expandida)
+            if (!novoValor || isNaN(novoValor)) {
+                alert('Por favor, digite um valor numérico válido para as horas.');
+                input.value = valorOriginal;
+                return;
+            }
+
+            // Atualiza o valor original
+            input.setAttribute('data-original', novoValor);
+
+            // Aqui você pode adicionar uma chamada para salvar no backend
+            // Exemplo futuro: fetch('/api/salvar-horas', { method: 'POST', body: JSON.stringify({ horas: novoValor }) })
+            
+            console.log('Horas atualizadas:', novoValor);
+        }
+
+        // Permite buscar pressionando Enter no input
+        document.getElementById('demanda').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarDemanda();
+            }
+        });
+
+        // Tipos de profissionais disponíveis
+        const tiposProfissionais = [
+            'Analista de Negócio',
+            'Desenvolvedor',
+            'Especialista Tecnológico',
+            'Gerente de Projeto',
+            'Scrum Master',
+            'Especialista UX',
+            'Arquiteto de Informação',
+            'Analista de Performance',
+            'Consultor de Performance'
+        ];
+
+        let contadorProfissionais = 0;
+
+        // Função para abrir o modal de adicionar informações
+        function adicionarInfo(sprintId, osId) {
+            if (!sprintId) {
+                alert('ID da Sprint não encontrado.');
+                return;
+            }
+            
+            // Limpa o formulário anterior
+            document.getElementById('formAddInfo').reset();
+            document.getElementById('profissionaisList').innerHTML = '';
+            contadorProfissionais = 0;
+            
+            // Preenche os IDs
+            document.getElementById('modalSprintId').value = sprintId;
+            document.getElementById('modalOSId').value = osId;
+            
+            // Tenta carregar dados salvos do localStorage
+            const chaveLocalStorage = `sprint_${sprintId}_info`;
+            const dadosSalvos = localStorage.getItem(chaveLocalStorage);
+            
+            if (dadosSalvos) {
+                try {
+                    const dados = JSON.parse(dadosSalvos);
+                    
+                    // Preenche horas da sprint
+                    const horasSprintInput = document.getElementById('horasSprint');
+                    if (horasSprintInput && dados.horasSprint) {
+                        horasSprintInput.value = dados.horasSprint;
+                    }
+                    
+                    // Preenche profissionais salvos
+                    if (dados.profissionais && dados.profissionais.length > 0) {
+                        dados.profissionais.forEach(prof => {
+                            // Adiciona o profissional primeiro
+                            adicionarProfissional();
+                            
+                            // Preenche os campos do último profissional adicionado
+                            const profissionalItems = document.querySelectorAll('.profissional-item');
+                            const ultimoItem = profissionalItems[profissionalItems.length - 1];
+                            
+                            if (ultimoItem) {
+                                const select = ultimoItem.querySelector('select');
+                                const quantidadeInput = ultimoItem.querySelector('input[placeholder="Qtd"]');
+                                const horasInput = ultimoItem.querySelector('input[placeholder="Horas"]');
+                                
+                                if (select && prof.tipo) {
+                                    select.value = prof.tipo;
+                                }
+                                if (quantidadeInput && prof.quantidade) {
+                                    quantidadeInput.value = prof.quantidade;
+                                }
+                                if (horasInput && prof.horas) {
+                                    horasInput.value = prof.horas;
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Atualiza a variável global também
+                    dadosProfissionaisAtuais[sprintId] = dados.profissionais || [];
+                    
+                    console.log('Dados carregados do localStorage:', dados);
+                } catch (error) {
+                    console.error('Erro ao carregar dados do localStorage:', error);
+                }
+            }
+            
+            // Abre o modal
+            document.getElementById('modalAddInfo').classList.add('active');
+        }
+
+        // Função para fechar o modal
+        function fecharModal() {
+            document.getElementById('modalAddInfo').classList.remove('active');
+        }
+
+        // Fechar modal ao clicar fora dele
+        document.getElementById('modalAddInfo').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModal();
+            }
+        });
+
+        // Função para adicionar um novo profissional
+        function adicionarProfissional() {
+            contadorProfissionais++;
+            const profissionaisList = document.getElementById('profissionaisList');
+            
+            const profissionalDiv = document.createElement('div');
+            profissionalDiv.className = 'profissional-item';
+            profissionalDiv.id = `profissional-${contadorProfissionais}`;
+            
+            // Cria o select de tipos
+            const selectTipo = document.createElement('select');
+            selectTipo.name = `profissional_tipo_${contadorProfissionais}`;
+            selectTipo.required = true;
+            selectTipo.innerHTML = '<option value="">Selecione o tipo</option>';
+            tiposProfissionais.forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo;
+                option.textContent = tipo;
+                selectTipo.appendChild(option);
+            });
+            
+            // Campo quantidade (menor) - sempre inicia com 1
+            const inputQuantidade = document.createElement('input');
+            inputQuantidade.type = 'number';
+            inputQuantidade.name = `profissional_quantidade_${contadorProfissionais}`;
+            inputQuantidade.placeholder = 'Qtd';
+            inputQuantidade.min = '1';
+            inputQuantidade.value = '1';
+            inputQuantidade.required = true;
+            inputQuantidade.className = 'profissional-quantidade';
+            
+            // Campo horas
+            const inputHoras = document.createElement('input');
+            inputHoras.type = 'number';
+            inputHoras.name = `profissional_horas_${contadorProfissionais}`;
+            inputHoras.placeholder = 'Horas';
+            inputHoras.min = '0';
+            inputHoras.step = '0.01';
+            inputHoras.required = true;
+            
+            // Botão remover
+            const btnRemove = document.createElement('button');
+            btnRemove.type = 'button';
+            btnRemove.className = 'btn-remove-profissional';
+            btnRemove.textContent = 'Remover';
+            btnRemove.onclick = function() {
+                profissionalDiv.remove();
+            };
+            
+            profissionalDiv.appendChild(selectTipo);
+            profissionalDiv.appendChild(inputQuantidade);
+            profissionalDiv.appendChild(inputHoras);
+            profissionalDiv.appendChild(btnRemove);
+            
+            profissionaisList.appendChild(profissionalDiv);
+        }
+
+        // Função para salvar as informações
+        function salvarInformacoes() {
+            try {
+                const form = document.getElementById('formAddInfo');
+                if (!form) {
+                    console.error('Formulário não encontrado');
+                    alert('Erro: Formulário não encontrado.');
+                    return;
+                }
+                
+                // Busca horas da sprint diretamente pelo ID
+                const horasSprintInput = document.getElementById('horasSprint');
+                const horasSprint = horasSprintInput ? horasSprintInput.value.trim() : '';
+                
+                // Validação básica
+                if (!horasSprint || parseFloat(horasSprint) <= 0) {
+                    alert('Por favor, preencha as horas da sprint com um valor maior que zero.');
+                    return;
+                }
+                
+                // Coleta dados dos profissionais
+                const profissionais = [];
+                const profissionalItems = document.querySelectorAll('.profissional-item');
+                
+                if (profissionalItems.length === 0) {
+                    alert('Por favor, adicione pelo menos um profissional.');
+                    return;
+                }
+                
+                profissionalItems.forEach((item, index) => {
+                    const select = item.querySelector('select');
+                    const quantidadeInput = item.querySelector('input[placeholder="Qtd"]');
+                    const horasInput = item.querySelector('input[placeholder="Horas"]');
+                    
+                    if (!select || !quantidadeInput || !horasInput) {
+                        console.warn(`Campos não encontrados no profissional ${index + 1}`);
+                        return;
+                    }
+                    
+                    const tipo = select.value.trim();
+                    const quantidade = quantidadeInput.value.trim();
+                    const horas = horasInput.value.trim();
+                    
+                    if (!tipo) {
+                        alert(`Por favor, selecione o tipo do profissional ${index + 1}.`);
+                        return;
+                    }
+                    
+                    if (!quantidade || parseInt(quantidade) <= 0) {
+                        alert(`Por favor, preencha a quantidade do profissional ${index + 1}.`);
+                        return;
+                    }
+                    
+                    if (!horas || parseFloat(horas) <= 0) {
+                        alert(`Por favor, preencha as horas do profissional ${index + 1}.`);
+                        return;
+                    }
+                    
+                    profissionais.push({
+                        tipo: tipo,
+                        quantidade: parseInt(quantidade),
+                        horas: parseFloat(horas)
+                    });
+                });
+                
+                if (profissionais.length === 0) {
+                    alert('Por favor, adicione pelo menos um profissional válido.');
+                    return;
+                }
+                
+                // Busca IDs da sprint e OS
+                const sprintIdInput = document.getElementById('modalSprintId');
+                const osIdInput = document.getElementById('modalOSId');
+                
+                const sprintId = sprintIdInput ? sprintIdInput.value.trim() : '';
+                const osId = osIdInput ? osIdInput.value.trim() : '';
+                
+                if (!sprintId) {
+                    alert('Erro: ID da Sprint não encontrado.');
+                    return;
+                }
+                
+                // Monta o objeto com os dados
+                const dados = {
+                    sprintId: sprintId,
+                    osId: osId,
+                    horasSprint: parseFloat(horasSprint),
+                    profissionais: profissionais
+                };
+                
+                // Atualiza também o array de sprints atual
+                // IMPORTANTE: Mantém hst como valor original do Redmine (para tabela 10)
+                // e adiciona horas_sprint como valor do usuário (para tabela 6)
+                try {
+                    if (Array.isArray(dadosSprintsAtuais)) {
+                        const idxSprint = dadosSprintsAtuais.findIndex(s => String(s.sprint) === String(sprintId));
+                        if (idxSprint !== -1) {
+                            // Preserva o HST original do Redmine se ainda não foi preservado
+                            if (!dadosSprintsAtuais[idxSprint].hst_redmine) {
+                                dadosSprintsAtuais[idxSprint].hst_redmine = dadosSprintsAtuais[idxSprint].hst;
+                            }
+                            // Adiciona horas_sprint como valor digitado pelo usuário (para tabela 6)
+                            dadosSprintsAtuais[idxSprint].horas_sprint = dados.horasSprint;
+                            console.log('Atualizando horas_sprint em dadosSprintsAtuais:', sprintId, dados.horasSprint);
+                            console.log('HST original preservado:', dadosSprintsAtuais[idxSprint].hst_redmine);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Não foi possível atualizar dadosSprintsAtuais com as horas da sprint:', e);
+                }
+                
+                // Armazena os profissionais da sprint para uso na geração do documento
+                if (!dadosProfissionaisAtuais[sprintId]) {
+                    dadosProfissionaisAtuais[sprintId] = [];
+                }
+                dadosProfissionaisAtuais[sprintId] = profissionais;
+                
+                // Salva no localStorage para persistência
+                const chaveLocalStorage = `sprint_${sprintId}_info`;
+                localStorage.setItem(chaveLocalStorage, JSON.stringify(dados));
+                
+                console.log('Dados salvos com sucesso:', dados);
+                console.log('Dados salvos no localStorage:', chaveLocalStorage);
+                console.log('Profissionais armazenados:', dadosProfissionaisAtuais);
+                
+                // Mostra mensagem de sucesso e fecha o modal
+                alert('Informações salvas com sucesso!');
+                fecharModal();
+                
+            } catch (error) {
+                console.error('Erro ao salvar informações:', error);
+                alert('Erro ao salvar informações. Verifique o console para mais detalhes.');
+            }
+        }
+
+        // ==========================================
+        // FUNÇÕES DE GERENCIAMENTO DE PROJETOS
+        // ==========================================
+
+        // Função para abrir o modal de projetos
+        async function abrirModalProjetos() {
+            const modal = document.getElementById('modalProjetos');
+            modal.classList.add('active');
+            await carregarProjetos();
+        }
+
+        // Função para fechar o modal de projetos
+        function fecharModalProjetos() {
+            const modal = document.getElementById('modalProjetos');
+            modal.classList.remove('active');
+            cancelarFormularioProjeto();
+        }
+
+        // Fechar modal ao clicar fora dele
+        document.getElementById('modalProjetos')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalProjetos();
+            }
+        });
+
+        // Função para carregar projetos do servidor
+        async function carregarProjetos() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/projetos');
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar projetos');
+                }
+                const projetos = await response.json();
+                exibirProjetos(projetos);
+            } catch (error) {
+                console.error('Erro ao carregar projetos:', error);
+                alert('Erro ao carregar projetos. Verifique se o servidor Flask está rodando na porta 5000.');
+            }
+        }
+
+        // Função para exibir projetos na lista
+        function exibirProjetos(projetos) {
+            const listaProjetos = document.getElementById('listaProjetos');
+            
+            if (!projetos || projetos.length === 0) {
+                listaProjetos.innerHTML = `
+                    <div class="empty-projetos">
+                        <p>Nenhum projeto cadastrado ainda.</p>
+                        <p style="margin-top: 8px; font-size: 14px;">Clique em "ADD Projeto" para cadastrar o primeiro projeto.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listaProjetos.innerHTML = projetos.map(projeto => `
+                <div class="projeto-item">
+                    <h4>${projeto.nomeProjeto || `Projeto #${projeto.id}`}</h4>
+                    <div class="projeto-info">
+                        <div class="projeto-info-item">
+                            <span class="projeto-info-label">Gestor</span>
+                            <span class="projeto-info-value">${projeto.gestorNome || '-'}</span>
+                        </div>
+                        <div class="projeto-info-item">
+                            <span class="projeto-info-label">Email Gestor</span>
+                            <span class="projeto-info-value">${projeto.gestorEmail || '-'}</span>
+                        </div>
+                        <div class="projeto-info-item">
+                            <span class="projeto-info-label">Celular Gestor</span>
+                            <span class="projeto-info-value">${projeto.gestorCelular || '-'}</span>
+                        </div>
+                        <div class="projeto-info-item">
+                            <span class="projeto-info-label">Gerente</span>
+                            <span class="projeto-info-value">${projeto.gerenteNome || '-'}</span>
+                        </div>
+                        <div class="projeto-info-item">
+                            <span class="projeto-info-label">Email Gerente</span>
+                            <span class="projeto-info-value">${projeto.gerenteEmail || '-'}</span>
+                        </div>
+                        <div class="projeto-info-item">
+                            <span class="projeto-info-label">Telefone Gerente</span>
+                            <span class="projeto-info-value">${projeto.gerenteTelefone || '-'}</span>
+                        </div>
+                    </div>
+                    <div class="projeto-introducao">
+                        <span class="projeto-introducao-label">Introdução do Projeto</span>
+                        <div class="projeto-introducao-value">${projeto.introducaoProjeto || '-'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Função para mostrar o formulário de projeto
+        function mostrarFormularioProjeto() {
+            const formulario = document.getElementById('formularioProjeto');
+            formulario.style.display = 'block';
+            document.getElementById('formProjeto').reset();
+            
+            // Scroll para o formulário
+            formulario.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Função para cancelar o formulário
+        function cancelarFormularioProjeto() {
+            const formulario = document.getElementById('formularioProjeto');
+            formulario.style.display = 'none';
+            document.getElementById('formProjeto').reset();
+        }
+
+        // Função para salvar um novo projeto
+        async function salvarProjeto() {
+            try {
+                const form = document.getElementById('formProjeto');
+                
+                // Validação do formulário
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+
+                // Coleta os dados do formulário
+                const dadosProjeto = {
+                    nomeProjeto: document.getElementById('nomeProjeto').value.trim(),
+                    gestorNome: document.getElementById('gestorNome').value.trim(),
+                    gestorEmail: document.getElementById('gestorEmail').value.trim(),
+                    gestorCelular: document.getElementById('gestorCelular').value.trim(),
+                    gerenteNome: document.getElementById('gerenteNome').value.trim(),
+                    gerenteEmail: document.getElementById('gerenteEmail').value.trim(),
+                    gerenteTelefone: document.getElementById('gerenteTelefone').value.trim(),
+                    introducaoProjeto: document.getElementById('introducaoProjeto').value.trim()
+                };
+
+                // Envia para o servidor
+                const response = await fetch('http://127.0.0.1:5000/api/projetos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dadosProjeto)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erro ao salvar projeto');
+                }
+
+                // Mostra mensagem de sucesso
+                alert('Projeto cadastrado com sucesso!');
+                
+                // Limpa o formulário e recarrega a lista
+                cancelarFormularioProjeto();
+                await carregarProjetos();
+                
+            } catch (error) {
+                console.error('Erro ao salvar projeto:', error);
+                
+                // Mensagem mais informativa baseada no tipo de erro
+                let mensagemErro = 'Erro ao salvar projeto. ';
+                
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    mensagemErro += 'Não foi possível conectar ao servidor. Verifique se o servidor Flask está rodando na porta 5000.';
+                } else if (error.message.includes('fetch')) {
+                    mensagemErro += 'Erro de comunicação com o servidor.';
+                } else {
+                    mensagemErro += error.message;
+                }
+                
+                alert(mensagemErro);
+            }
+        }
+    </script>
+</body>
+</html>
+

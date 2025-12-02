@@ -1,0 +1,33 @@
+{
+  "tipos_sprint": {
+    "Desenvolvimento": {
+      "atividades": "• Realizar a correção ou evolução",
+      "entregaveis": "• Código Fonte / Script"
+    },
+    "Manutenção": {
+      "atividades": "",
+      "entregaveis": ""
+    },
+    "Construção": {
+      "atividades": "",
+      "entregaveis": ""
+    },
+    "Design": {
+      "atividades": "",
+      "entregaveis": ""
+    },
+    "Arquitetura": {
+      "atividades": "",
+      "entregaveis": ""
+    },
+    "Monitoramento": {
+      "atividades": "",
+      "entregaveis": ""
+    },
+    "Descoberta": {
+      "atividades": "",
+      "entregaveis": ""
+    }
+  }
+}
+
