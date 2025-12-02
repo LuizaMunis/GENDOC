@@ -496,43 +496,9 @@ def preencher_linha_com_dados_sprint(row, sprint_data, tags_sprint):
                     valor = str(sprint_data.get(campo, ''))
                 substituir_texto_em_paragrafo(paragraph, tag, valor)
     
-    # Depois, substitui valores diretos nas células específicas preservando formatação
-    # Isso é necessário porque algumas células podem ter valores diretos (não tags)
-    if len(row.cells) >= 4:
-        # Coluna 0: Fase (ID da sprint)
-        if row.cells[0].text.strip() and not any(tag in row.cells[0].text for tag in tags_sprint.keys()):
-            # Preserva formatação ao substituir
-            novo_valor = str(sprint_data.get('sprint', ''))
-            if row.cells[0].paragraphs:
-                primeiro_para = row.cells[0].paragraphs[0]
-                if primeiro_para.runs:
-                    primeiro_run = primeiro_para.runs[0]
-                    fonte_original = primeiro_run.font.name
-                    tamanho_original = primeiro_run.font.size
-                    primeiro_run.text = novo_valor
-                    if fonte_original:
-                        primeiro_run.font.name = fonte_original
-                    if tamanho_original:
-                        primeiro_run.font.size = tamanho_original
-                else:
-                    row.cells[0].text = novo_valor
-        
-        # Coluna 1: Sprint (Tipo)
-        if row.cells[1].text.strip() and not any(tag in row.cells[1].text for tag in tags_sprint.keys()):
-            novo_valor = str(sprint_data.get('tipo', ''))
-            if row.cells[1].paragraphs:
-                primeiro_para = row.cells[1].paragraphs[0]
-                if primeiro_para.runs:
-                    primeiro_run = primeiro_para.runs[0]
-                    fonte_original = primeiro_run.font.name
-                    tamanho_original = primeiro_run.font.size
-                    primeiro_run.text = novo_valor
-                    if fonte_original:
-                        primeiro_run.font.name = fonte_original
-                    if tamanho_original:
-                        primeiro_run.font.size = tamanho_original
-                else:
-                    row.cells[1].text = novo_valor
+    # IMPORTANTE: NÃO substitui valores diretos em células que não têm tags
+    # Só preenche onde há tags explícitas para evitar sobrescrever dados normais
+    # A substituição de tags já foi feita acima
     
     # SEMPRE normaliza a última coluna (Observação) para ter apenas "N/A" uma vez
     # Isso previne duplicação mesmo que tenha sido copiado incorretamente
@@ -999,19 +965,30 @@ def preencher_plano_trabalho(
             # Encontra linhas que contêm tags de sprint
             linhas_template_sprint = []
             for row_idx, row in enumerate(table.rows):
+                # IMPORTANTE: Só adiciona se a linha CONTÉM tags de sprint
+                # Não preenche linhas normais sem tags
                 if linha_contem_tag_sprint(row) and not linha_contem_tag_profissional(row):
                     linhas_template_sprint.append(row_idx)
+                    print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} contém tags de sprint: {row.cells[0].text[:50] if row.cells else 'N/A'}")
             
-            # Se não encontrou linhas com tags, tenta identificar por posição/estrutura da tabela
-            # (útil quando o template tem linhas vazias sem tags)
+            # Se não encontrou linhas com tags, tenta identificar linhas COMPLETAMENTE VAZIAS
+            # (útil quando o template tem linhas vazias sem tags, mas NÃO preenche linhas com dados normais)
             if not linhas_template_sprint and len(table.rows) > 1:
-                # Pula o cabeçalho (primeira linha) e verifica se há linhas de dados vazias
-                # Assumindo que linhas após o cabeçalho podem ser templates
-                for row_idx in range(1, min(len(table.rows), len(dados_sprints) + 2)):
+                print(f"[DEBUG] Tabela {table_idx}: Nenhuma tag encontrada, procurando linhas completamente vazias")
+                # Pula o cabeçalho (primeira linha) e verifica se há linhas COMPLETAMENTE VAZIAS
+                for row_idx in range(1, len(table.rows)):
                     row = table.rows[row_idx]
-                    # Se a linha está vazia ou tem poucos caracteres, pode ser template
-                    texto_linha = ' '.join([cell.text.strip() for cell in row.cells])
-                    if len(texto_linha.strip()) < 10:  # Linha praticamente vazia
+                    # Verifica se TODAS as células estão vazias (linha template)
+                    todas_vazias = True
+                    for cell in row.cells:
+                        texto_cell = cell.text.strip()
+                        # Se a célula tem conteúdo significativo (mais de 2 caracteres), não é template
+                        if len(texto_cell) > 2:
+                            todas_vazias = False
+                            break
+                    
+                    if todas_vazias:
+                        print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} está completamente vazia, adicionando tags")
                         linhas_template_sprint.append(row_idx)
                         # Adiciona tags temporárias para que o preenchimento funcione
                         if len(row.cells) > 0:
@@ -1021,12 +998,15 @@ def preencher_plano_trabalho(
                             if len(row.cells) > 1 and not row.cells[1].text.strip():
                                 row.cells[1].paragraphs[0].add_run('{SPRINT_TIPO}')
                             if len(row.cells) > 2:
-                                if '{ATIVIDADES}' not in texto_linha:
-                                    row.cells[2].paragraphs[0].add_run('{ATIVIDADES}')
+                                row.cells[2].paragraphs[0].add_run('{SPRINTS_HORAS}')
                             if len(row.cells) > 3:
-                                if '{ENTREGAVEIS}' not in texto_linha:
-                                    row.cells[3].paragraphs[0].add_run('{ENTREGAVEIS}')
-                        break  # Para após encontrar a primeira linha template
+                                row.cells[3].paragraphs[0].add_run('{OS_ID}')
+                            if len(row.cells) > 4:
+                                row.cells[4].paragraphs[0].add_run('{ATIVIDADES}')
+                            if len(row.cells) > 5:
+                                row.cells[5].paragraphs[0].add_run('{ENTREGAVEIS}')
+                        # Para após encontrar a primeira linha template vazia
+                        break
             
             # Se encontrou linhas de template de sprint
             if linhas_template_sprint:
@@ -1113,29 +1093,37 @@ def preencher_plano_trabalho(
                         grupos_sprint[sprint_num] = []
                     grupos_sprint[sprint_num].append((row_idx, row, prof_num))
             
-            # Se não encontrou linhas com tags numeradas, tenta identificar por estrutura
-            # (útil quando o template tem linhas vazias sem tags)
+            # Se não encontrou linhas com tags numeradas, tenta identificar linhas COMPLETAMENTE VAZIAS
+            # (útil quando o template tem linhas vazias sem tags, mas NÃO preenche linhas com dados normais)
             if not grupos_sprint and len(table.rows) > 1 and dados_sprints:
-                print(f"[DEBUG] Tabela {table_idx}: Nenhuma tag numerada encontrada, tentando identificar linhas vazias")
-                # Pula o cabeçalho (primeira linha) e cria grupos baseados na posição
+                print(f"[DEBUG] Tabela {table_idx}: Nenhuma tag numerada encontrada, procurando linhas completamente vazias")
+                # Pula o cabeçalho (primeira linha) e procura linhas COMPLETAMENTE VAZIAS
                 linha_atual = 1
                 for sprint_idx, sprint_data in enumerate(dados_sprints):
                     sprint_num = sprint_idx + 1
                     if linha_atual < len(table.rows):
                         row = table.rows[linha_atual]
-                        texto_linha = ' '.join([cell.text.strip() for cell in row.cells])
-                        # Se a linha está vazia ou tem poucos caracteres, pode ser template
-                        if len(texto_linha.strip()) < 10:
+                        # Verifica se TODAS as células estão vazias (linha template)
+                        todas_vazias = True
+                        for cell in row.cells:
+                            texto_cell = cell.text.strip()
+                            # Se a célula tem conteúdo significativo (mais de 2 caracteres), não é template
+                            if len(texto_cell) > 2:
+                                todas_vazias = False
+                                break
+                        
+                        if todas_vazias:
+                            print(f"[DEBUG] Tabela {table_idx}: Linha {linha_atual} está completamente vazia, adicionando tags numeradas")
                             # Adiciona tags temporárias para que o preenchimento funcione
                             if len(row.cells) > 0 and not row.cells[0].text.strip():
                                 row.cells[0].paragraphs[0].add_run(f'{{SPRINT_ID_{sprint_num}}}')
                             if len(row.cells) > 1 and not row.cells[1].text.strip():
                                 row.cells[1].paragraphs[0].add_run(f'{{SPRINT_TIPO_{sprint_num}}}')
-                            if len(row.cells) > 2 and '{PROF_TIPO' not in texto_linha:
+                            if len(row.cells) > 2:
                                 row.cells[2].paragraphs[0].add_run(f'{{PROF_TIPO_{sprint_num}_1}}')
-                            if len(row.cells) > 3 and '{PROF_QTD' not in texto_linha:
+                            if len(row.cells) > 3:
                                 row.cells[3].paragraphs[0].add_run(f'{{PROF_QTD_{sprint_num}_1}}')
-                            if len(row.cells) > 4 and '{PROF_HORAS' not in texto_linha:
+                            if len(row.cells) > 4:
                                 row.cells[4].paragraphs[0].add_run(f'{{PROF_HORAS_{sprint_num}_1}}')
                             
                             if sprint_num not in grupos_sprint:
@@ -1143,7 +1131,10 @@ def preencher_plano_trabalho(
                             grupos_sprint[sprint_num].append((linha_atual, row, 1))
                             linha_atual += 1
                         else:
+                            # Linha tem dados, pula para próxima
                             linha_atual += 1
+                    else:
+                        break
             
             print(f"[DEBUG] Tabela {table_idx}: Encontrados {len(grupos_sprint)} grupo(s) de sprint")
             
@@ -1164,19 +1155,9 @@ def preencher_plano_trabalho(
                 
                 print(f"[DEBUG] Tabela {table_idx}: Sprint {sprint_num} ({sprint_id}): {num_profissionais} profissional(is), {num_linhas_template} linha(s) template")
                 
-                # Fallback extra: garante que a primeira linha do grupo sempre receba
-                # o ID da sprint e o tipo diretamente nas duas primeiras colunas.
-                # Isso ajuda especialmente quando há mesclagem vertical nas colunas
-                # "Fases" e "Sprint" e quando as tags do modelo não são detectadas.
-                if linhas_grupo:
-                    primeira_row_idx, primeira_row, _ = linhas_grupo[0]
-                    try:
-                        if len(primeira_row.cells) >= 2:
-                            escrever_valor_em_celula(primeira_row.cells[0], sprint_data.get('sprint', ''))
-                            escrever_valor_em_celula(primeira_row.cells[1], sprint_data.get('tipo', ''))
-                            print(f"[DEBUG] Tabela {table_idx}: Forçado preenchimento da sprint nas células (linha {primeira_row_idx})")
-                    except Exception as e:
-                        print(f"[DEBUG] Erro ao forçar preenchimento da sprint na tabela {table_idx}, linha {primeira_row_idx}: {e}")
+                # IMPORTANTE: NÃO força preenchimento em células sem tags
+                # Só preenche onde há tags explícitas para evitar sobrescrever dados normais
+                # O preenchimento já é feito pela função preencher_tags_numeradas_item7
                 
                 # Preenche linhas existentes
                 for idx in range(min(num_profissionais, num_linhas_template)):
