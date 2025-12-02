@@ -302,19 +302,23 @@ def carregar_projetos():
     if kv_client:
         try:
             import requests
-            # Upstash/Vercel KV REST API: GET /get/{key}
-            response = requests.get(
-                f"{kv_client['url']}/get/projetos",
+            # Upstash/Vercel KV REST API usa POST para todos os comandos
+            # Comando: GET projetos
+            response = requests.post(
+                kv_client['url'],
                 headers={
-                    'Authorization': f"Bearer {kv_client['token']}"
+                    'Authorization': f"Bearer {kv_client['token']}",
+                    'Content-Type': 'application/json'
                 },
+                json=['GET', 'projetos'],
                 timeout=5
             )
             if response.status_code == 200:
                 data = response.json()
                 # Upstash retorna {'result': 'valor'} ou {'result': None}
-                if data.get('result'):
-                    return json.loads(data['result'])
+                result = data.get('result')
+                if result:
+                    return json.loads(result)
         except Exception as e:
             print(f"[WARN] Erro ao carregar do KV, usando fallback: {e}")
             import traceback
@@ -340,15 +344,16 @@ def salvar_projetos(projetos):
     if kv_client:
         try:
             import requests
-            # Upstash/Vercel KV REST API: POST /set/{key}
+            # Upstash/Vercel KV REST API usa POST para todos os comandos
+            # Comando: SET projetos "valor_json"
             projetos_json = json.dumps(projetos, ensure_ascii=False)
             response = requests.post(
-                f"{kv_client['url']}/set/projetos",
+                kv_client['url'],
                 headers={
                     'Authorization': f"Bearer {kv_client['token']}",
                     'Content-Type': 'application/json'
                 },
-                json=projetos_json,  # Upstash espera o valor diretamente no body JSON
+                json=['SET', 'projetos', projetos_json],
                 timeout=5
             )
             if response.status_code == 200:
