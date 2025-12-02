@@ -118,12 +118,31 @@ def linha_contem_tag_sprint(row):
     texto_linha = ''
     for cell in row.cells:
         texto_linha += cell.text + ' '
+    
     # IMPORTANTE: Verifica se há tags explícitas com chaves {}
     # Não aceita apenas palavras soltas como "Horas" - precisa ter a tag completa como "{SPRINTS_HORAS}"
-    tem_tag = any(tag in texto_linha for tag in tags_sprint)
+    # Verifica se pelo menos uma tag completa está presente no texto
+    tem_tag = False
+    for tag in tags_sprint:
+        if tag in texto_linha:
+            tem_tag = True
+            break
+    
     # Verifica adicionalmente se há pelo menos uma chave {} no texto (garantia extra)
     tem_chaves = '{' in texto_linha and '}' in texto_linha
-    return tem_tag and tem_chaves
+    
+    # IMPORTANTE: Se a linha contém palavras de cabeçalho mas não tem tags, não é uma linha de template
+    # Lista completa de palavras que aparecem em cabeçalhos de tabelas
+    palavras_cabecalho = ['Fase', 'Sprint', 'Horas', 'OS*', 'Atividades', 'Entregáveis', 'Observação', 
+                          'Perfil', 'Qtde', 'HSTs', 'Alocação', 'timebox', 'sprint (%)']
+    # Verifica se a linha contém MÚLTIPLAS palavras de cabeçalho (indicando que é um cabeçalho real)
+    palavras_encontradas = sum(1 for palavra in palavras_cabecalho if palavra in texto_linha)
+    tem_apenas_cabecalho = palavras_encontradas >= 2 and not tem_chaves
+    
+    # CRITÉRIO FINAL: Só retorna True se tem tag E tem chaves E não é apenas cabeçalho
+    resultado = tem_tag and tem_chaves and not tem_apenas_cabecalho
+    
+    return resultado
 
 
 def linha_contem_tag_profissional(row):
@@ -783,6 +802,7 @@ def preencher_tags_numeradas_item7(row, sprint_data, prof_data, sprint_num, prof
     # Substitui todas as tags numeradas na linha
     # IMPORTANTE: Tags de sprint nas células 0 e 1 já foram preenchidas diretamente acima
     # Mas ainda precisa substituir tags de sprint em outras células (caso existam)
+    # IMPORTANTE: Também substitui tags nas células 0 e 1 caso não tenham sido preenchidas diretamente
     for cell_idx, cell in enumerate(row.cells):
         for paragraph in cell.paragraphs:
             # Substitui tags de sprint numeradas em TODAS as células (incluindo 0 e 1)
@@ -790,6 +810,22 @@ def preencher_tags_numeradas_item7(row, sprint_data, prof_data, sprint_num, prof
             for tag, valor in tags_sprint_numeradas.items():
                 if substituir_texto_em_paragrafo(paragraph, tag, str(valor)):
                     print(f"[DEBUG] Tag de sprint {tag} substituída na célula {cell_idx} com valor: {valor}")
+            
+            # IMPORTANTE: Também substitui tags genéricas de sprint caso existam
+            # Isso garante compatibilidade com templates que usam tags genéricas
+            if cell_idx == 0:
+                # Célula 0: substitui tags de sprint ID
+                for tag_gen in ['{SPRINT_ID}', '{SPRINT_OS}', '{OS_ID}']:
+                    if tag_gen in paragraph.text:
+                        valor_sprint = str(sprint_data.get('sprint', ''))
+                        if substituir_texto_em_paragrafo(paragraph, tag_gen, valor_sprint):
+                            print(f"[DEBUG] Tag genérica de sprint {tag_gen} substituída na célula 0 com valor: {valor_sprint}")
+            elif cell_idx == 1:
+                # Célula 1: substitui tags de tipo de sprint
+                if '{SPRINT_TIPO}' in paragraph.text:
+                    valor_tipo = str(sprint_data.get('tipo', ''))
+                    if substituir_texto_em_paragrafo(paragraph, '{SPRINT_TIPO}', valor_tipo):
+                        print(f"[DEBUG] Tag genérica de tipo {{SPRINT_TIPO}} substituída na célula 1 com valor: {valor_tipo}")
             
             # Substitui tags de profissional numeradas (apenas se houver profissional)
             if tags_prof_numeradas:
@@ -980,11 +1016,22 @@ def preencher_plano_trabalho(
                 # Pula o cabeçalho (linha 0)
                 if row_idx == 0:
                     continue
+                
+                # IMPORTANTE: Verifica se é uma linha de cabeçalho (contém múltiplas palavras de cabeçalho sem tags)
+                texto_linha_completo = ' '.join([cell.text.strip() for cell in row.cells])
+                palavras_cabecalho = ['Fase', 'Sprint', 'Horas', 'OS*', 'Atividades', 'Entregáveis', 'Observação']
+                palavras_encontradas = sum(1 for palavra in palavras_cabecalho if palavra in texto_linha_completo)
+                tem_chaves = '{' in texto_linha_completo and '}' in texto_linha_completo
+                
+                # Se tem múltiplas palavras de cabeçalho mas não tem tags, é um cabeçalho - PULA
+                if palavras_encontradas >= 2 and not tem_chaves:
+                    print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} é cabeçalho (ignorada): {texto_linha_completo[:60]}")
+                    continue
+                
                 # IMPORTANTE: Só adiciona se a linha CONTÉM tags de sprint
                 # Não preenche linhas normais sem tags
                 if linha_contem_tag_sprint(row) and not linha_contem_tag_profissional(row):
                     # Verifica se realmente tem tags com chaves {} (não apenas palavras soltas)
-                    texto_linha_completo = ' '.join([cell.text for cell in row.cells])
                     if '{' in texto_linha_completo and '}' in texto_linha_completo:
                         linhas_template_sprint.append(row_idx)
                         print(f"[DEBUG] Tabela {table_idx}: Linha {row_idx} contém tags de sprint: {row.cells[0].text[:50] if row.cells else 'N/A'}")
@@ -1061,17 +1108,24 @@ def preencher_plano_trabalho(
                         print(f"[DEBUG] ERRO: Não há linha template suficiente para sprint {sprint_idx}")
                 
                 # Remove linhas extras que não são necessárias (da última para a primeira)
+                # IMPORTANTE: Só remove linhas que NÃO foram preenchidas (linhas extras além das necessárias)
                 if len(linhas_template_sprint) > num_sprints:
                     linhas_para_remover = len(linhas_template_sprint) - num_sprints
                     print(f"[DEBUG] Removendo {linhas_para_remover} linha(s) extra(s) da tabela {table_idx}")
                     # Remove da última linha template para a primeira extra
+                    # IMPORTANTE: Remove em ordem reversa para não afetar os índices
+                    linhas_removidas = []
                     for idx in range(len(linhas_template_sprint) - 1, num_sprints - 1, -1):
                         linha_idx_remover = linhas_template_sprint[idx]
                         try:
-                            table._element.remove(table.rows[linha_idx_remover]._element)
-                            print(f"[DEBUG] Removida linha {linha_idx_remover} da tabela {table_idx}")
+                            # Verifica se a linha ainda existe antes de remover
+                            if linha_idx_remover < len(table.rows):
+                                table._element.remove(table.rows[linha_idx_remover]._element)
+                                linhas_removidas.append(linha_idx_remover)
+                                print(f"[DEBUG] Removida linha {linha_idx_remover} da tabela {table_idx}")
                         except Exception as e:
                             print(f"[DEBUG] Erro ao remover linha {linha_idx_remover}: {e}")
+                    print(f"[DEBUG] Total de linhas removidas: {len(linhas_removidas)}")
             else:
                 print(f"[DEBUG] Tabela {table_idx}: Nenhuma linha com tags de sprint encontrada")
         
