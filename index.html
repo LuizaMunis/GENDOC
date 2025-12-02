@@ -1003,8 +1003,8 @@
             `;
 
             try {
-                // Faz a requisição para a API Flask (usando URL absoluta para funcionar abrindo o arquivo local)
-                const response = await fetch(`http://127.0.0.1:5000/api/redmine/${numeroDemanda}`);
+                // Faz a requisição para a API Flask (usando URL relativa para funcionar localmente e no Vercel)
+                const response = await fetch(`/api/redmine/${numeroDemanda}`);
                 const data = await response.json();
 
                 if (response.ok) {
@@ -1079,7 +1079,7 @@
             `;
             
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/gerar-plano-trabalho', {
+                const response = await fetch('/api/gerar-plano-trabalho', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1575,7 +1575,7 @@
         // Função para carregar projetos do servidor
         async function carregarProjetos() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/projetos');
+                const response = await fetch('/api/projetos');
                 if (!response.ok) {
                     throw new Error('Erro ao carregar projetos');
                 }
@@ -1679,7 +1679,7 @@
                 };
 
                 // Envia para o servidor
-                const response = await fetch('http://127.0.0.1:5000/api/projetos', {
+                const response = await fetch('/api/projetos', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
