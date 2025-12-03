@@ -288,6 +288,7 @@ def gerar_plano_trabalho():
             base_nome_sanitizado = 'Plano_Trabalho'
         
         download_filename = f'{base_nome_sanitizado}_{demanda_id}.docx'
+        print(f"[DEBUG] Nome arquivo base='{base_nome}' sanitizado='{base_nome_sanitizado}', demanda='{demanda_id}', final='{download_filename}'")
         
         # Salva em arquivo temporário
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
