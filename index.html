@@ -1112,16 +1112,24 @@
                     // Verifica se a resposta é realmente um arquivo
                     const contentType = response.headers.get('content-type');
                     if (contentType && contentType.includes('application/vnd.openxmlformats')) {
+                        // Tenta descobrir o nome do arquivo pelo header Content-Disposition
+                        const disposition = response.headers.get('content-disposition') || '';
+                        let filename = `Plano_Trabalho_${demandaId}.docx`;
+                        const match = /filename="?([^\";]+)"?/i.exec(disposition);
+                        if (match && match[1]) {
+                            filename = match[1];
+                        }
+
                         const blob = await response.blob();
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `Plano_Trabalho_${demandaId}.docx`;
+                        a.download = filename;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         window.URL.revokeObjectURL(url);
-                        console.log('Arquivo baixado com sucesso!');
+                        console.log('Arquivo baixado com sucesso!', filename);
                     } else {
                         // Se não for um arquivo, tenta ler como JSON para ver o erro
                         const errorData = await response.json();
