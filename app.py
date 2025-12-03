@@ -478,6 +478,62 @@ def adicionar_projeto():
         }), 500
 
 
+@app.route('/api/projetos/<int:projeto_id>', methods=['PUT'])
+def atualizar_projeto(projeto_id):
+    """
+    Rota para atualizar um projeto existente.
+
+    Body (JSON):
+        Mesma estrutura da criação de projeto. Somente os campos enviados serão atualizados.
+
+    Returns:
+        - 200: Projeto atualizado com sucesso
+        - 400: Dados inválidos
+        - 404: Projeto não encontrado
+        - 500: Erro no servidor
+    """
+    try:
+        data = request.get_json() or {}
+
+        # Carrega projetos existentes
+        projetos = carregar_projetos()
+
+        # Encontra o projeto pelo ID
+        projeto_existente = next((p for p in projetos if p.get("id") == projeto_id), None)
+        if not projeto_existente:
+            return jsonify({
+                "error": "Projeto não encontrado",
+                "message": f"Projeto com id {projeto_id} não foi encontrado."
+            }), 404
+
+        # Campos que podem ser atualizados
+        campos_editaveis = [
+            'nomeProjeto', 'gestorNome', 'gestorEmail', 'gestorCelular',
+            'gerenteNome', 'gerenteEmail', 'gerenteTelefone',
+            'introducaoProjeto'
+        ]
+
+        # Atualiza apenas campos presentes no body
+        for campo in campos_editaveis:
+            if campo in data and data.get(campo) is not None:
+                projeto_existente[campo] = data.get(campo)
+
+        # Persiste alterações
+        if salvar_projetos(projetos):
+            return jsonify(projeto_existente), 200
+        else:
+            return jsonify({
+                "error": "Erro ao salvar projeto",
+                "message": "Não foi possível salvar o projeto atualizado. Verifique os logs do servidor."
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            "error": "Erro ao atualizar projeto",
+            "message": str(e)
+        }), 500
+
+
 if __name__ == '__main__':
     # Configurações do servidor
     port = int(os.getenv('PORT', 5000))

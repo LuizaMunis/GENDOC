@@ -919,7 +919,7 @@
 
                     <!-- Formulário de Adicionar/Editar Projeto -->
                     <div id="formularioProjeto" style="display: none; margin-top: 24px; padding-top: 24px; border-top: 2px solid #E0E0E0;">
-                        <h3 style="margin-bottom: 16px; color: #1F1F1F; font-size: 18px;">Novo Projeto</h3>
+                        <h3 id="tituloFormularioProjeto" style="margin-bottom: 16px; color: #1F1F1F; font-size: 18px;">Novo Projeto</h3>
                         <form id="formProjeto">
                             <div class="form-group-modal" style="margin-bottom: 20px;">
                                 <label for="nomeProjeto">Nome do Projeto *</label>
@@ -980,6 +980,7 @@
         let dadosSprintsAtuais = [];
         let dadosProfissionaisAtuais = {};
         let projetosCarregados = []; // projetos carregados do backend para filtro em memória
+        let projetoEmEdicaoId = null; // controla se estamos editando um projeto existente
         
         // Dados mock
         const dadosMock = {
@@ -1647,7 +1648,17 @@
 
             listaProjetos.innerHTML = projetos.map(projeto => `
                 <div class="projeto-item">
-                    <h4>${projeto.nomeProjeto || `Projeto #${projeto.id}`}</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h4 style="margin-bottom: 0;">${projeto.nomeProjeto || `Projeto #${projeto.id}`}</h4>
+                        <button 
+                            type="button" 
+                            class="btn-add-info" 
+                            style="padding: 6px 12px; font-size: 12px;" 
+                            onclick="iniciarEdicaoProjeto(${projeto.id})"
+                        >
+                            Editar
+                        </button>
+                    </div>
                     <div class="projeto-info">
                         <div class="projeto-info-item">
                             <span class="projeto-info-label">Gestor</span>
@@ -1682,11 +1693,47 @@
             `).join('');
         }
 
-        // Função para mostrar o formulário de projeto
+        // Função para iniciar edição de um projeto
+        function iniciarEdicaoProjeto(id) {
+            const projeto = projetosCarregados.find(p => String(p.id) === String(id));
+            if (!projeto) {
+                alert('Projeto não encontrado para edição.');
+                return;
+            }
+
+            projetoEmEdicaoId = projeto.id;
+
+            const formulario = document.getElementById('formularioProjeto');
+            formulario.style.display = 'block';
+
+            const titulo = document.getElementById('tituloFormularioProjeto');
+            if (titulo) {
+                titulo.textContent = 'Editar Projeto';
+            }
+
+            document.getElementById('nomeProjeto').value = projeto.nomeProjeto || '';
+            document.getElementById('gestorNome').value = projeto.gestorNome || '';
+            document.getElementById('gestorEmail').value = projeto.gestorEmail || '';
+            document.getElementById('gestorCelular').value = projeto.gestorCelular || '';
+            document.getElementById('gerenteNome').value = projeto.gerenteNome || '';
+            document.getElementById('gerenteEmail').value = projeto.gerenteEmail || '';
+            document.getElementById('gerenteTelefone').value = projeto.gerenteTelefone || '';
+            document.getElementById('introducaoProjeto').value = projeto.introducaoProjeto || '';
+
+            formulario.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Função para mostrar o formulário de projeto (modo criação)
         function mostrarFormularioProjeto() {
             const formulario = document.getElementById('formularioProjeto');
             formulario.style.display = 'block';
             document.getElementById('formProjeto').reset();
+            projetoEmEdicaoId = null;
+
+            const titulo = document.getElementById('tituloFormularioProjeto');
+            if (titulo) {
+                titulo.textContent = 'Novo Projeto';
+            }
             
             // Scroll para o formulário
             formulario.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1697,9 +1744,10 @@
             const formulario = document.getElementById('formularioProjeto');
             formulario.style.display = 'none';
             document.getElementById('formProjeto').reset();
+            projetoEmEdicaoId = null;
         }
 
-        // Função para salvar um novo projeto
+        // Função para salvar um novo projeto ou atualização
         async function salvarProjeto() {
             try {
                 const form = document.getElementById('formProjeto');
@@ -1722,9 +1770,14 @@
                     introducaoProjeto: document.getElementById('introducaoProjeto').value.trim()
                 };
 
+                const isEdicao = projetoEmEdicaoId !== null && projetoEmEdicaoId !== undefined;
+
                 // Envia para o servidor
-                const response = await fetch('/api/projetos', {
-                    method: 'POST',
+                const url = isEdicao ? `/api/projetos/${projetoEmEdicaoId}` : '/api/projetos';
+                const method = isEdicao ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -1737,7 +1790,7 @@
                 }
 
                 // Mostra mensagem de sucesso
-                alert('Projeto cadastrado com sucesso!');
+                alert(isEdicao ? 'Projeto atualizado com sucesso!' : 'Projeto cadastrado com sucesso!');
                 
                 // Limpa o formulário e recarrega a lista
                 cancelarFormularioProjeto();
