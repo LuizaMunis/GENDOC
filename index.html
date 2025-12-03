@@ -901,6 +901,17 @@
                         </button>
                     </div>
 
+                    <!-- Campo de busca de projetos -->
+                    <div style="margin-bottom: 16px;">
+                        <input 
+                            type="text" 
+                            id="buscaProjetos" 
+                            placeholder="Buscar projeto pelo nome..." 
+                            oninput="aplicarFiltroProjetos()"
+                            style="width: 100%; padding: 10px 14px; border: 2px solid #E0E0E0; border-radius: 8px; font-size: 14px; font-family: 'Inter', sans-serif;"
+                        >
+                    </div>
+
                     <!-- Lista de Projetos -->
                     <div id="listaProjetos" style="max-height: 400px; overflow-y: auto;">
                         <!-- Projetos serão carregados aqui -->
@@ -968,6 +979,7 @@
         // Variáveis globais para armazenar dados
         let dadosSprintsAtuais = [];
         let dadosProfissionaisAtuais = {};
+        let projetosCarregados = []; // projetos carregados do backend para filtro em memória
         
         // Dados mock
         const dadosMock = {
@@ -1588,14 +1600,38 @@
                     throw new Error('Erro ao carregar projetos');
                 }
                 const projetos = await response.json();
-                exibirProjetos(projetos);
+                projetosCarregados = Array.isArray(projetos) ? projetos : [];
+                aplicarFiltroProjetos(); // exibe já filtrando (ou tudo, se busca vazia)
             } catch (error) {
                 console.error('Erro ao carregar projetos:', error);
                 alert('Erro ao carregar projetos. Verifique se o servidor Flask está rodando na porta 5000.');
             }
         }
 
-        // Função para exibir projetos na lista
+        // Função para aplicar o filtro de busca na lista de projetos
+        function aplicarFiltroProjetos() {
+            const inputBusca = document.getElementById('buscaProjetos');
+            const termo = (inputBusca?.value || '').trim().toLowerCase();
+
+            if (!projetosCarregados || projetosCarregados.length === 0) {
+                exibirProjetos([]);
+                return;
+            }
+
+            if (!termo) {
+                exibirProjetos(projetosCarregados);
+                return;
+            }
+
+            const filtrados = projetosCarregados.filter((projeto) => {
+                const nome = (projeto.nomeProjeto || '').toLowerCase();
+                return nome.includes(termo);
+            });
+
+            exibirProjetos(filtrados);
+        }
+
+        // Função para exibir projetos na lista (já recebe a lista filtrada)
         function exibirProjetos(projetos) {
             const listaProjetos = document.getElementById('listaProjetos');
             

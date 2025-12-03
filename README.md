@@ -197,3 +197,4 @@ Para dúvidas ou problemas, verifique:
 2. O console do navegador (F12) para erros JavaScript
 3. O arquivo de configuração `.env`
 
+
