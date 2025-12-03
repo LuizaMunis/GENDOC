@@ -225,13 +225,30 @@ def gerar_plano_trabalho():
                 "error": f"Modelo de Plano de Trabalho não encontrado: {modelo_nome}"
             }), 404
         
-        # Carrega dados do projeto (usa o primeiro projeto cadastrado por padrão)
+        # Carrega dados do projeto
+        # Regra:
+        # 1. Tenta achar um projeto cujo nomeProjeto case (case-insensitive) com o nome da demanda (project.name do Redmine)
+        # 2. Se não achar, usa o primeiro projeto como fallback
         dados_projeto = {}
         projetos = carregar_projetos()
         if projetos and len(projetos) > 0:
-            # Usa o primeiro projeto por padrão
-            dados_projeto = projetos[0]
-            print(f"[DEBUG] Usando projeto: {dados_projeto.get('nomeProjeto', 'N/A')}")
+            nome_demanda = str(dados_demanda.get('nome', '')).strip().lower()
+            projeto_match = None
+
+            if nome_demanda:
+                for p in projetos:
+                    nome_proj = str(p.get('nomeProjeto', '')).strip().lower()
+                    # match exato ou contendo (para tolerar pequenas diferenças)
+                    if nome_proj == nome_demanda or nome_demanda in nome_proj or nome_proj in nome_demanda:
+                        projeto_match = p
+                        break
+
+            if projeto_match:
+                dados_projeto = projeto_match
+                print(f"[DEBUG] Usando projeto por nome: {dados_projeto.get('nomeProjeto', 'N/A')}")
+            else:
+                dados_projeto = projetos[0]
+                print(f"[DEBUG] [WARN] Projeto correspondente a '{nome_demanda}' não encontrado, usando primeiro projeto: {dados_projeto.get('nomeProjeto', 'N/A')}")
         else:
             print(f"[DEBUG] [WARN] Nenhum projeto encontrado no arquivo de configuração")
         
