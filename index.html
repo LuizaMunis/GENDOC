@@ -925,6 +925,10 @@
                                 <label for="nomeProjeto">Nome do Projeto *</label>
                                 <input type="text" id="nomeProjeto" name="nomeProjeto" required placeholder="Digite o nome do projeto">
                             </div>
+                            <div class="form-group-modal" style="margin-bottom: 20px;">
+                                <label for="nomeSVN">Nome SVN / Nome do sistema (para nome do arquivo)</label>
+                                <input type="text" id="nomeSVN" name="nomeSVN" placeholder="Ex.: SubProj_SISAIH01">
+                            </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px;">
                                 <!-- Coluna Esquerda: Dados do Gestor -->
                                 <div>
@@ -1712,6 +1716,10 @@
             }
 
             document.getElementById('nomeProjeto').value = projeto.nomeProjeto || '';
+            const inputNomeSVN = document.getElementById('nomeSVN');
+            if (inputNomeSVN) {
+                inputNomeSVN.value = projeto.nomeSVN || '';
+            }
             document.getElementById('gestorNome').value = projeto.gestorNome || '';
             document.getElementById('gestorEmail').value = projeto.gestorEmail || '';
             document.getElementById('gestorCelular').value = projeto.gestorCelular || '';
@@ -1761,6 +1769,7 @@
                 // Coleta os dados do formulário
                 const dadosProjeto = {
                     nomeProjeto: document.getElementById('nomeProjeto').value.trim(),
+                    nomeSVN: (document.getElementById('nomeSVN')?.value || '').trim(),
                     gestorNome: document.getElementById('gestorNome').value.trim(),
                     gestorEmail: document.getElementById('gestorEmail').value.trim(),
                     gestorCelular: document.getElementById('gestorCelular').value.trim(),

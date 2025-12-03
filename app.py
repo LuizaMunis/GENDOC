@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import tempfile
+import re
 from dotenv import load_dotenv
 from services.redmine import buscar_demanda, formatar_dados
 from services.documento import preencher_plano_trabalho
@@ -261,6 +262,33 @@ def gerar_plano_trabalho():
             dados_projeto=dados_projeto
         )
         
+        # Define o nome do arquivo de saída
+        # Regra:
+        # 1. Tenta usar o nome SVN do projeto (campo opcional cadastrado pelo usuário)
+        # 2. Se não houver, usa o nome do projeto cadastrado
+        # 3. Se ainda não houver, usa o nome vindo do Redmine
+        # 4. Fallback final: "Plano_Trabalho"
+        base_nome = ''
+        if dados_projeto:
+            base_nome = (
+                str(dados_projeto.get('nomeSVN') or '').strip()
+                or str(dados_projeto.get('nomeProjeto') or '').strip()
+            )
+        
+        if not base_nome:
+            base_nome = str(dados_demanda.get('nome') or '').strip()
+        
+        if not base_nome:
+            base_nome = 'Plano_Trabalho'
+        
+        # Sanitiza o nome para ser um nome de arquivo seguro
+        # Mantém apenas letras, números, underline, hífen e ponto; substitui o resto por underscore
+        base_nome_sanitizado = re.sub(r'[^A-Za-z0-9_.-]+', '_', base_nome)
+        if not base_nome_sanitizado:
+            base_nome_sanitizado = 'Plano_Trabalho'
+        
+        download_filename = f'{base_nome_sanitizado}_{demanda_id}.docx'
+        
         # Salva em arquivo temporário
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
         temp_path = temp_file.name
@@ -272,7 +300,7 @@ def gerar_plano_trabalho():
         return send_file(
             temp_path,
             as_attachment=True,
-            download_name=f'Plano_Trabalho_{demanda_id}.docx',
+            download_name=download_filename,
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         ), 200
         
@@ -467,6 +495,7 @@ def adicionar_projeto():
         novo_projeto = {
             "id": len(projetos) + 1,  # ID simples baseado no tamanho da lista
             "nomeProjeto": data.get('nomeProjeto'),
+            "nomeSVN": data.get('nomeSVN'),
             "gestorNome": data.get('gestorNome'),
             "gestorEmail": data.get('gestorEmail'),
             "gestorCelular": data.get('gestorCelular'),
@@ -525,7 +554,7 @@ def atualizar_projeto(projeto_id):
 
         # Campos que podem ser atualizados
         campos_editaveis = [
-            'nomeProjeto', 'gestorNome', 'gestorEmail', 'gestorCelular',
+            'nomeProjeto', 'nomeSVN', 'gestorNome', 'gestorEmail', 'gestorCelular',
             'gerenteNome', 'gerenteEmail', 'gerenteTelefone',
             'introducaoProjeto'
         ]
